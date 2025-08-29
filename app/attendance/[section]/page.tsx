@@ -169,7 +169,54 @@ export default function SectionAttendancePage() {
     }
   }, [searchQuery, students]);
 
+  // Navigation warning for unsaved changes
+  useEffect(() => {
+    const hasUnsavedChanges = () => {
+      if (!isValidSession || !originalAttendance) return false;
 
+      return Object.keys(attendance).some(usn => {
+        const current = attendance[usn] || false;
+        const original = originalAttendance[usn] || false;
+        return current !== original;
+      });
+    };
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges()) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved attendance changes. Are you sure you want to leave?';
+        return e.returnValue;
+      }
+    };
+
+    const handlePopState = (e: PopStateEvent) => {
+      if (hasUnsavedChanges()) {
+        const confirmed = window.confirm(
+          'You have unsaved attendance changes. Are you sure you want to leave without saving?'
+        );
+        if (!confirmed) {
+          // Push the current state back to prevent navigation
+          window.history.pushState(null, '', window.location.href);
+          e.preventDefault();
+          return;
+        }
+      }
+    };
+
+    // Add event listeners
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
+
+    // Push initial state to enable popstate detection
+    if (hasUnsavedChanges()) {
+      window.history.pushState(null, '', window.location.href);
+    }
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [attendance, originalAttendance, isValidSession]);
 
   const toggleAttendance = (usn: string) => {
     if (!isValidSession || (existingSession && !isEditMode)) return;
@@ -183,6 +230,16 @@ export default function SectionAttendancePage() {
   const markAllPresent = () => {
     if (!isValidSession || (existingSession && !isEditMode)) return;
 
+    const currentPresent = Object.values(attendance).filter(Boolean).length;
+    const total = students.length;
+
+    if (currentPresent > 0 && currentPresent < total) {
+      const confirmed = window.confirm(
+        `${currentPresent} students are currently marked present. Mark all ${total} students as present?`
+      );
+      if (!confirmed) return;
+    }
+
     const newAttendance: Record<string, boolean> = {};
     students.forEach(student => {
       newAttendance[student.usn] = true;
@@ -192,6 +249,16 @@ export default function SectionAttendancePage() {
 
   const markAllAbsent = () => {
     if (!isValidSession || (existingSession && !isEditMode)) return;
+
+    const currentAbsent = Object.values(attendance).filter(present => !present).length;
+    const total = students.length;
+
+    if (currentAbsent > 0 && currentAbsent < total) {
+      const confirmed = window.confirm(
+        `${currentAbsent} students are currently marked absent. Mark all ${total} students as absent?`
+      );
+      if (!confirmed) return;
+    }
 
     const newAttendance: Record<string, boolean> = {};
     students.forEach(student => {
@@ -298,6 +365,26 @@ export default function SectionAttendancePage() {
     return { present, absent, total, percentage };
   };
 
+  const hasUnsavedChanges = () => {
+    if (!isValidSession || !originalAttendance) return false;
+
+    return Object.keys(attendance).some(usn => {
+      const current = attendance[usn] || false;
+      const original = originalAttendance[usn] || false;
+      return current !== original;
+    });
+  };
+
+  const handleBackNavigation = () => {
+    if (hasUnsavedChanges()) {
+      const confirmed = window.confirm(
+        'You have unsaved attendance changes. Are you sure you want to leave without saving?'
+      );
+      if (!confirmed) return;
+    }
+    router.push('/attendance');
+  };
+
   if (loading || loadingStudents) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -323,7 +410,7 @@ export default function SectionAttendancePage() {
           <div className="flex items-center justify-between mb-3 md:mb-6">
             <Button
               variant="ghost"
-              onClick={() => router.push('/attendance')}
+              onClick={handleBackNavigation}
               className=""
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
@@ -641,7 +728,15 @@ export default function SectionAttendancePage() {
                         <div
                           key={session.id}
                           className="flex items-center justify-between p-3 md:p-4 bg-cyber-gray-50 rounded-xl hover:bg-cyber-gray-100 cursor-pointer transition-colors group"
-                          onClick={() => router.push(sessionUrl)}
+                          onClick={() => {
+                            if (hasUnsavedChanges()) {
+                              const confirmed = window.confirm(
+                                'You have unsaved attendance changes. Are you sure you want to navigate to another session without saving?'
+                              );
+                              if (!confirmed) return;
+                            }
+                            router.push(sessionUrl);
+                          }}
                         >
                           <div className="flex items-center gap-3 md:gap-4">
                             <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-lg flex items-center justify-center">
