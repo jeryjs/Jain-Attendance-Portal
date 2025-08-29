@@ -33,10 +33,12 @@ export default function RootLayout({
         <ErrorBoundary>
           <AuthProvider>
             <ToastProvider>
-              <Navigation />
-              <main className="relative">
-                {children}
-              </main>
+                <div className="flex min-h-screen flex-col lg:flex-row">
+                <Navigation />
+                <main className="flex-1 overflow-auto h-screen">
+                  {children}
+                </main>
+              </div>
               <ToastContainer />
             </ToastProvider>
           </AuthProvider>

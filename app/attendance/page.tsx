@@ -223,7 +223,7 @@ export default function AttendancePage() {
         </div>
 
         {/* Admin Panel */}
-        {isAdmin && (
+        {/* {isAdmin && (
           <Card variant="neon" className="mt-8">
             <div className="flex items-center justify-between">
               <div>
@@ -250,7 +250,7 @@ export default function AttendancePage() {
               </div>
             </div>
           </Card>
-        )}
+        )} */}
       </div>
     </div>
   );

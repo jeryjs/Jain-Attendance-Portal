@@ -31,7 +31,7 @@ const navItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: Home },
   { label: 'Attendance', href: '/attendance', icon: Calendar },
   { label: 'Reports', href: '/reports', icon: BarChart3 },
-  { label: 'Settings', href: '/settings', icon: Settings, adminOnly: true },
+  // { label: 'Settings', href: '/settings', icon: Settings, adminOnly: true },
 ];
 
 export default function Navigation() {
@@ -39,7 +39,6 @@ export default function Navigation() {
   const router = useRouter();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -70,7 +69,7 @@ export default function Navigation() {
       <SidebarNavigation />
 
       {/* Mobile Top Bar */}
-      <nav className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-cyber-gray-200 shadow-lg">
+      <nav className="lg:hidden sticky fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-cyber-gray-200 shadow-lg">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-lg flex items-center justify-center">
@@ -96,7 +95,7 @@ export default function Navigation() {
 
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm animate-in fade-in">
+        <div className="lg:hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm animate-in fade-in">
           <div className="fixed top-0 right-0 w-80 h-full bg-white shadow-2xl animate-in slide-in-from-right">
             <div className="p-6">
               <div className="flex items-center justify-between mb-8">
@@ -174,10 +173,6 @@ export default function Navigation() {
           </div>
         </div>
       )}
-
-      {/* Spacer for fixed navigation */}
-      <div className="lg:h-0" />
-      <div className="lg:ml-64" />
     </>
   );
 }
