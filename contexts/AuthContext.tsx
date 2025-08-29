@@ -13,6 +13,8 @@ interface AuthContextType {
 	isTeacher: boolean;
 	isAdmin: boolean;
 	isStudent: boolean;
+	recentSections: string[];
+	setRecentSections: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -91,6 +93,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	const isAdmin = user?.role === 'admin';
 	const isStudent = user?.role === 'student';
 
+	const [recentSections, setRecentSections] = useState<string[]>(() => {
+		if (typeof window !== 'undefined') {
+			const recent = localStorage.getItem(`recent_sections`);
+			return recent ? JSON.parse(recent) : [];
+		}
+		return [];
+	});
+	useEffect(() => {
+		if (typeof window !== 'undefined') {
+			localStorage.setItem('recent_sections', JSON.stringify(recentSections));
+		}
+	}, [recentSections]);
+
 	return (
 		<AuthContext.Provider value={{
 			user,
@@ -100,6 +115,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 			isTeacher,
 			isAdmin,
 			isStudent,
+			recentSections,
+			setRecentSections,
 		}}>
 			{children}
 		</AuthContext.Provider>

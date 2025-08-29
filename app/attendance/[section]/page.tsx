@@ -42,7 +42,7 @@ export default function SectionAttendancePage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, loading, isTeacher } = useAuth();
+  const { user, loading, isTeacher, setRecentSections } = useAuth();
   const { addToast } = useToast();
   const section = decodeURIComponent(params.section as string);
 
@@ -342,6 +342,9 @@ export default function SectionAttendancePage() {
         description: existingSession ? "Session has been updated successfully!" : "Attendance saved successfully!",
         variant: "success"
       });
+
+      // save this section to local storage for quick access next time
+      setRecentSections(prev => [section, ...prev.filter(s => s !== section)].slice(0, 9));
 
       if (isEditMode) router.replace(`/attendance/${encodeURIComponent(section)}?date=${urlDate}&time=${urlTime}`);
       else router.refresh();  // avoid calling location.reload as i wanna retain the cache

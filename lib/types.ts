@@ -62,3 +62,29 @@ export const SESSION_OPTIONS: { key: SessionOption; value: string }[] = [
   { key: '14.50-15.30', value: '2:50 PM to 3:30 PM' },
   { key: '14-15.40', value: '2:00 PM to 3:40 PM (2hrs)' }
 ];
+
+export const SECTION_MAPPINGS: { [key: string]: string } = {
+  ANE: 'Aeronautical Engineering',
+  ASE: 'Aerospace Engineering',
+  CE: 'Civil Engineering',
+  EEE: 'Electrical and Electronics Engineering',
+  ECE: 'Electronics & Communication Engineering',
+  ME: 'Mechanical Engineering',
+  SE: 'Computer Engineering - Software Engineering',
+  AIDD: 'AI-Driven DevOps',
+  AIDE: 'Artificial Intelligence and Data Engineering',
+  AIML: 'Artificial Intelligence and Machine Learning',
+  BCT: 'Blockchain Technology in association',
+  CTIS: 'Cloud Technology and Information Security',
+  CTMA: 'Mobile Applications and Cloud Technology',
+  CPS: 'Cyber Physical Systems',
+  'GEN-AI': 'GenAI (with IBM)',
+  'CSE-PWC': 'CSE (with PwC)',
+  CSBS: 'Computer Science and Business Systems',
+  CSE: 'Computer Science and Engineering',
+  AI: 'Artificial Intelligence',
+  CyS: 'Cybersecurity',
+  DS: 'Data Science in association',
+  IOT: 'Internet of Things in association',
+  ISE: 'Information Science and Engineering'
+};

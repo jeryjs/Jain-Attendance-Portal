@@ -33,10 +33,11 @@ export interface CardProps
 }
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(
-  ({ className, variant, size, glow, animated, ...props }, ref) => (
+  ({ className, variant, size, glow, animated, onClick, ...props }, ref) => (
     <div
       ref={ref}
       className={cn(cardVariants({ variant, size }), className)}
+      onClick={onClick}
     >
       {/* Cyber Background Effects */}
       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">

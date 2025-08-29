@@ -6,11 +6,11 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChevronDown, ChevronRight, Calendar, Clock, Users, Sparkles, Zap, Target, BookOpen } from 'lucide-react';
-import { Program } from '@/lib/types';
+import { Program, SECTION_MAPPINGS } from '@/lib/types';
 import programsData from '@/public/programs.json';
 
 export default function AttendancePage() {
-  const { user, loading, isTeacher, isAdmin } = useAuth();
+  const { user, loading, isTeacher, isAdmin, recentSections } = useAuth();
   const router = useRouter();
   const [expandedPrograms, setExpandedPrograms] = useState<Set<string>>(new Set());
   const [programs] = useState<Program[]>(programsData);
@@ -45,6 +45,18 @@ export default function AttendancePage() {
       newExpanded.add(programId);
     }
     setExpandedPrograms(newExpanded);
+  };
+
+  const getGridLayout = (count: number) => {
+    if (count <= 3) return 'grid-cols-1 sm:grid-cols-3';
+    if (count <= 6) return 'grid-cols-2 sm:grid-cols-3';
+    return 'grid-cols-3 sm:grid-cols-3';
+  };
+
+  const getCardSize = (count: number) => {
+    if (count <= 3) return 'p-4 md:p-6';
+    if (count <= 6) return 'p-3 md:p-4';
+    return 'p-2 md:p-3';
   };
 
   const handleSectionClick = (section: string) => {
@@ -83,48 +95,56 @@ export default function AttendancePage() {
 
           <div className="flex flex-wrap justify-center gap-2 md:gap-4 mb-4 md:mb-8">
             <div className="flex items-center space-x-1 md:space-x-2 bg-cyber-gray-50 px-2 md:px-4 py-1 md:py-2 rounded-full">
-              <Zap className="w-3 h-3 md:w-4 md:h-4 text-cyber-yellow" />
-              <span className="text-xs md:text-sm text-cyber-gray-700">Lightning Fast</span>
+              <BookOpen className="w-3 h-3 md:w-4 md:h-4 text-cyber-yellow" />
+              <div className="font-bold text-cyber-gray-900 mb-1">{programs.length}</div>
+              <span className="text-xs md:text-sm text-cyber-gray-700">Programs Available</span>
             </div>
             <div className="flex items-center space-x-1 md:space-x-2 bg-cyber-gray-50 px-2 md:px-4 py-1 md:py-2 rounded-full">
               <Target className="w-3 h-3 md:w-4 md:h-4 text-cyber-yellow" />
-              <span className="text-xs md:text-sm text-cyber-gray-700">Ultra Accurate</span>
-            </div>
-            <div className="flex items-center space-x-1 md:space-x-2 bg-cyber-gray-50 px-2 md:px-4 py-1 md:py-2 rounded-full">
-              <Sparkles className="w-3 h-3 md:w-4 md:h-4 text-cyber-yellow" />
-              <span className="text-xs md:text-sm text-cyber-gray-700">Smart Analytics</span>
+              <div className="font-bold text-cyber-gray-900 mb-1">{programs.reduce((acc, program) => acc + program.sections.length, 0)}</div>
+              <span className="text-xs md:text-sm text-cyber-gray-700">Active Sections</span>
             </div>
           </div>
         </div>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-6 mb-6 md:mb-12">
-          <Card variant="cyber" className="text-center p-3 md:p-6">
-            <div className="w-8 h-8 md:w-12 md:h-12 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-xl flex items-center justify-center mx-auto mb-2 md:mb-3">
-              <BookOpen className="w-4 h-4 md:w-6 md:h-6 text-cyber-gray-900" />
+        {/* Recent Sections */}
+        {recentSections.length > 0 && (
+          <div className="mb-6 md:mb-12">
+            <div className="flex items-center gap-2 mb-4">
+              <Clock className="w-4 h-4 md:w-5 md:h-5 text-cyber-yellow" />
+              <h2 className="text-lg md:text-xl font-bold text-cyber-gray-900">Recent Sections</h2>
+              <span className="text-xs md:text-sm text-cyber-gray-600">
+                Last {recentSections.length} section{recentSections.length !== 1 ? 's' : ''}
+              </span>
             </div>
-            <div className="text-lg md:text-2xl font-bold text-cyber-gray-900 mb-1">{programs.length}</div>
-            <div className="text-xs md:text-sm text-cyber-gray-600">Programs Available</div>
-          </Card>
 
-          <Card variant="cyber" className="text-center p-3 md:p-6">
-            <div className="w-8 h-8 md:w-12 md:h-12 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-xl flex items-center justify-center mx-auto mb-2 md:mb-3">
-              <Users className="w-4 h-4 md:w-6 md:h-6 text-cyber-gray-900" />
+            <div className={`grid ${getGridLayout(recentSections.length)} gap-2 md:gap-4`}>
+              {recentSections.map((section, index) => (
+                <Card
+                  key={section}
+                  variant="cyber"
+                  className={`${getCardSize(recentSections.length)} cursor-pointer hover:scale-105 transition-all duration-300 group`}
+                  onClick={() => handleSectionClick(section)}
+                >
+                  <div className="relative flex items-center px-2 py-1 md:px-3 md:py-2 bg-cyber-yellow/30 rounded-full shadow-lg gap-2 md:gap-3 cursor-pointer hover:scale-105 transition-all duration-300">
+                    <div className="flex items-center">
+                      <div className="w-5 h-5 md:w-7 md:h-7 bg-cyber-gray-50 rounded-full flex items-center justify-center shadow">
+                        <Users className="w-3 h-3 md:w-4 md:h-4 text-cyber-yellow" />
+                      </div>
+                    </div>
+                    <div className="flex flex-col justify-center min-w-0">
+                      <span className="font-semibold text-xs md:text-sm truncate">{section}</span>
+                      <span className="hidden md:block text-[10px] text-cyber-gray-600">{SECTION_MAPPINGS[section] || ''}</span>
+                    </div>
+                    <div className="absolute -top-1 -right-1 w-4 h-4 md:w-5 md:h-5 bg-cyber-yellow rounded-full flex items-center justify-center shadow">
+                      <span className="text-[10px] md:text-xs font-bold text-cyber-gray-900">{index + 1}</span>
+                    </div>
+                  </div>
+                </Card>
+              ))}
             </div>
-            <div className="text-lg md:text-2xl font-bold text-cyber-gray-900 mb-1">
-              {programs.reduce((acc, program) => acc + program.sections.length, 0)}
-            </div>
-            <div className="text-xs md:text-sm text-cyber-gray-600">Active Sections</div>
-          </Card>
-
-          <Card variant="cyber" className="text-center p-3 md:p-6">
-            <div className="w-8 h-8 md:w-12 md:h-12 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-xl flex items-center justify-center mx-auto mb-2 md:mb-3">
-              <Calendar className="w-4 h-4 md:w-6 md:h-6 text-cyber-gray-900" />
-            </div>
-            <div className="text-lg md:text-2xl font-bold text-cyber-gray-900 mb-1">24/7</div>
-            <div className="text-xs md:text-sm text-cyber-gray-600">System Availability</div>
-          </Card>
-        </div>
+          </div>
+        )}
 
         {/* Programs Grid */}
         <div className="space-y-3 md:space-y-6">
