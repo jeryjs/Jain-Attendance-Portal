@@ -44,7 +44,7 @@ export default function SectionAttendancePage() {
   const searchParams = useSearchParams();
   const { user, loading, isTeacher } = useAuth();
   const { addToast } = useToast();
-  const section = params.section as string;
+  const section = decodeURIComponent(params.section as string);
 
   // URL parameters
   const urlDate = searchParams.get('date');
@@ -203,7 +203,7 @@ export default function SectionAttendancePage() {
   const handleStartSession = async () => {
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
     const timeStr = selectedSession;
-    router.push(`/attendance/${section}?date=${dateStr}&time=${timeStr}`);
+    router.push(`/attendance/${encodeURIComponent(section)}?date=${dateStr}&time=${timeStr}`);
     setIsDialogOpen(false);
   };
 
@@ -276,7 +276,7 @@ export default function SectionAttendancePage() {
         variant: "success"
       });
 
-      if (isEditMode) router.replace(`/attendance/${section}?date=${urlDate}&time=${urlTime}`);
+      if (isEditMode) router.replace(`/attendance/${encodeURIComponent(section)}?date=${urlDate}&time=${urlTime}`);
       else router.refresh();  // avoid calling location.reload as i wanna retain the cache
     } catch (error) {
       console.error('Error saving attendance:', error);
@@ -543,7 +543,7 @@ export default function SectionAttendancePage() {
             <Button
               size="lg"
               glow
-              onClick={() => router.push(`/attendance/${section}?date=${urlDate}&time=${urlTime}&edit=true`)}
+              onClick={() => router.push(`/attendance/${encodeURIComponent(section)}?date=${urlDate}&time=${urlTime}&edit=true`)}
               className="px-4 md:px-6 py-2 md:py-4 shadow-2xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold hover:shadow-blue-500/25 rounded-full text-sm md:text-base"
             >
               <Edit className="w-4 h-4 md:w-5 md:h-5 mr-1 md:mr-2" />
@@ -635,7 +635,7 @@ export default function SectionAttendancePage() {
                     {sectionSessions.slice(0, 5).map((session: any) => {
                       const sessionDate = format(session.createdAt?.toDate() || new Date(), 'yyyy-MM-dd');
                       const sessionTime = session.session;
-                      const sessionUrl = `/attendance/${section}?date=${sessionDate}&time=${sessionTime}`;
+                      const sessionUrl = `/attendance/${encodeURIComponent(section)}?date=${sessionDate}&time=${sessionTime}`;
 
                       return (
                         <div

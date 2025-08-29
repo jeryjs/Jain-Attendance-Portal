@@ -216,7 +216,7 @@ export default function DashboardPage() {
               <div className="space-y-2 md:space-y-4">
                 {stats.recentSessions.slice(0, 3).map((session: any) => {
                   const sessionDate = format(session.createdAt.toDate(), 'yyyy-MM-dd');
-                  const sessionUrl = `/attendance/${session.section}?date=${sessionDate}&time=${session.session}`;
+                  const sessionUrl = `/attendance/${encodeURIComponent(session.section)}?date=${sessionDate}&time=${session.session}`;
                   
                   return (
                     <div 
