@@ -1,19 +1,17 @@
+import { db } from '@/lib/firebase';
 import {
   collection,
-  query,
-  where,
-  getDocs,
-  addDoc,
-  updateDoc,
   doc,
-  Timestamp,
-  writeBatch,
   getDoc,
-  setDoc,
+  getDocs,
   limit,
-  startAt
+  query,
+  setDoc,
+  Timestamp,
+  updateDoc,
+  where,
+  writeBatch
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 
 // Cache for student data
 const studentsCache = new Map<string, { data: any[], timestamp: number }>();
@@ -153,8 +151,8 @@ export class FirebaseService {
     section?: string;
     teacherId?: string;
     dateRange?: { start: Date; end: Date };
-  }, count: number = 10, offset: number = 0) {
-    const cacheKey = `sessions_${JSON.stringify(filters)}_${count}_${offset}`;
+  }, count: number = 30) {
+    const cacheKey = `sessions_${JSON.stringify(filters)}_${count}`;
     const now = Date.now();
 
     // Check cache first
@@ -164,7 +162,7 @@ export class FirebaseService {
     }
 
     try {
-      let q = query(collection(db, 'attendance_sessions'), limit(count), startAt(offset));
+      let q = query(collection(db, 'attendance_sessions'), limit(count));
 
       if (filters?.section) {
         q = query(q, where('section', '==', filters.section));

@@ -185,22 +185,22 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-6">
+    <div className="min-h-screen p-2 md:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-12">
-          <div className="flex items-center justify-center mb-6">
+        <div className="text-center mb-6 md:mb-12">
+          <div className="flex items-center justify-center mb-3 md:mb-6">
             <div className="relative">
-              <div className="w-20 h-20 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-2xl flex items-center justify-center shadow-2xl shadow-cyber-yellow/25 animate-pulse">
-                <BarChart3 className="w-10 h-10 text-cyber-gray-900" />
+              <div className="w-12 h-12 md:w-20 md:h-20 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-2xl flex items-center justify-center shadow-2xl shadow-cyber-yellow/25 animate-pulse">
+                <BarChart3 className="w-6 h-6 md:w-10 md:h-10 text-cyber-gray-900" />
               </div>
-              <div className="absolute -top-2 -right-2 w-6 h-6 bg-cyber-yellow rounded-full flex items-center justify-center animate-bounce">
-                <Sparkles className="w-3 h-3 text-cyber-gray-900" />
+              <div className="absolute -top-1 -right-1 md:-top-2 md:-right-2 w-4 h-4 md:w-6 md:h-6 bg-cyber-yellow rounded-full flex items-center justify-center animate-bounce">
+                <Sparkles className="w-2 h-2 md:w-3 md:h-3 text-cyber-gray-900" />
               </div>
             </div>
           </div>
 
-          <h1 className="text-4xl md:text-6xl font-bold mb-4">
+          <h1 className="text-2xl md:text-4xl lg:text-6xl font-bold mb-2 md:mb-4">
             <span className="bg-gradient-to-r from-cyber-gray-900 via-cyber-gray-700 to-cyber-gray-900 bg-clip-text text-transparent">
               Attendance
             </span>
@@ -210,16 +210,16 @@ export default function ReportsPage() {
             </span>
           </h1>
 
-          <p className="text-xl text-cyber-gray-600 mb-8 max-w-2xl mx-auto">
+          <p className="text-sm md:text-xl text-cyber-gray-600 mb-4 md:mb-8 max-w-2xl mx-auto px-2">
             Comprehensive analytics and insights for your attendance data
           </p>
         </div>
 
         {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card variant="cyber">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-6 mb-4 md:mb-8">
+          <Card variant="cyber" className="p-3 md:p-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-cyber-gray-700">Select Month</label>
+              <label className="text-xs md:text-sm font-medium text-cyber-gray-700">Select Month</label>
               <Calendar
                 mode="single"
                 selected={selectedMonth}
@@ -230,9 +230,9 @@ export default function ReportsPage() {
             </div>
           </Card>
 
-          <Card variant="cyber">
+          <Card variant="cyber" className="p-3 md:p-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-cyber-gray-700">Filter by Section</label>
+              <label className="text-xs md:text-sm font-medium text-cyber-gray-700">Filter by Section</label>
               <Select value={selectedSection} onValueChange={setSelectedSection}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Sections" />
@@ -247,11 +247,11 @@ export default function ReportsPage() {
             </div>
           </Card>
 
-          <Card variant="cyber">
+          <Card variant="cyber" className="p-3 md:p-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-cyber-gray-700">Export Options</label>
-              <Button onClick={exportReport} className="w-full">
-                <Download className="w-4 h-4 mr-2" />
+              <label className="text-xs md:text-sm font-medium text-cyber-gray-700">Export Options</label>
+              <Button onClick={exportReport} className="w-full text-sm md:text-base">
+                <Download className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
                 Export CSV
               </Button>
             </div>
@@ -259,54 +259,54 @@ export default function ReportsPage() {
         </div>
 
         {/* Overview Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-          <Card variant="cyber" className="text-center">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center mx-auto mb-2">
-              <CalendarIcon className="w-5 h-5 text-white" />
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-6 mb-4 md:mb-12">
+          <Card variant="cyber" className="text-center p-3 md:p-6">
+            <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center mx-auto mb-1 md:mb-2">
+              <CalendarIcon className="w-4 h-4 md:w-5 md:h-5 text-white" />
             </div>
-            <div className="text-2xl font-bold text-cyber-gray-900 mb-1">{reportData.sessions.length}</div>
+            <div className="text-lg md:text-2xl font-bold text-cyber-gray-900 mb-1">{reportData.sessions.length}</div>
             <div className="text-xs text-cyber-gray-600">Total Sessions</div>
           </Card>
 
-          <Card variant="cyber" className="text-center">
-            <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center mx-auto mb-2">
-              <Users className="w-5 h-5 text-white" />
+          <Card variant="cyber" className="text-center p-3 md:p-6">
+            <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center mx-auto mb-1 md:mb-2">
+              <Users className="w-4 h-4 md:w-5 md:h-5 text-white" />
             </div>
-            <div className="text-2xl font-bold text-cyber-gray-900 mb-1">{reportData.attendanceStats.totalPresent}</div>
+            <div className="text-lg md:text-2xl font-bold text-cyber-gray-900 mb-1">{reportData.attendanceStats.totalPresent}</div>
             <div className="text-xs text-cyber-gray-600">Total Present</div>
           </Card>
 
-          <Card variant="cyber" className="text-center">
-            <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center mx-auto mb-2">
-              <Activity className="w-5 h-5 text-white" />
+          <Card variant="cyber" className="text-center p-3 md:p-6">
+            <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center mx-auto mb-1 md:mb-2">
+              <Activity className="w-4 h-4 md:w-5 md:h-5 text-white" />
             </div>
-            <div className="text-2xl font-bold text-cyber-gray-900 mb-1">{reportData.attendanceStats.totalAbsent}</div>
+            <div className="text-lg md:text-2xl font-bold text-cyber-gray-900 mb-1">{reportData.attendanceStats.totalAbsent}</div>
             <div className="text-xs text-cyber-gray-600">Total Absent</div>
           </Card>
 
-          <Card variant="cyber" className="text-center">
-            <div className="w-10 h-10 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-lg flex items-center justify-center mx-auto mb-2">
-              <TrendingUp className="w-5 h-5 text-cyber-gray-900" />
+          <Card variant="cyber" className="text-center p-3 md:p-6">
+            <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-lg flex items-center justify-center mx-auto mb-1 md:mb-2">
+              <TrendingUp className="w-4 h-4 md:w-5 md:h-5 text-cyber-gray-900" />
             </div>
-            <div className="text-2xl font-bold text-cyber-gray-900 mb-1">{reportData.attendanceStats.averageAttendance}%</div>
+            <div className="text-lg md:text-2xl font-bold text-cyber-gray-900 mb-1">{reportData.attendanceStats.averageAttendance}%</div>
             <div className="text-xs text-cyber-gray-600">Avg Attendance</div>
           </Card>
         </div>
 
         {/* Section Performance */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-          <Card variant="cyber">
-            <h3 className="text-xl font-bold text-cyber-gray-900 mb-6 flex items-center gap-2">
-              <PieChart className="w-5 h-5 text-cyber-yellow" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-8 mb-4 md:mb-12">
+          <Card variant="cyber" className="p-3 md:p-6">
+            <h3 className="text-lg md:text-xl font-bold text-cyber-gray-900 mb-3 md:mb-6 flex items-center gap-2">
+              <PieChart className="w-4 h-4 md:w-5 md:h-5 text-cyber-yellow" />
               Section Performance
             </h3>
 
-            <div className="space-y-4">
+            <div className="space-y-3 md:space-y-4">
               {Object.entries(reportData.sectionStats).map(([section, stats]) => (
                 <div key={section} className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-cyber-gray-900">{section}</span>
-                    <span className="text-sm font-medium text-cyber-gray-600">{stats.percentage}%</span>
+                    <span className="font-semibold text-cyber-gray-900 text-sm md:text-base">{section}</span>
+                    <span className="text-xs md:text-sm font-medium text-cyber-gray-600">{stats.percentage}%</span>
                   </div>
                   <div className="w-full bg-cyber-gray-200 rounded-full h-2">
                     <div
@@ -323,22 +323,22 @@ export default function ReportsPage() {
               ))}
 
               {Object.keys(reportData.sectionStats).length === 0 && (
-                <div className="text-center py-8">
-                  <BarChart3 className="w-12 h-12 text-cyber-gray-400 mx-auto mb-4" />
-                  <p className="text-cyber-gray-600">No data available</p>
-                  <p className="text-sm text-cyber-gray-500">Try selecting a different month</p>
+                <div className="text-center py-4 md:py-8">
+                  <BarChart3 className="w-8 h-8 md:w-12 md:h-12 text-cyber-gray-400 mx-auto mb-2 md:mb-4" />
+                  <p className="text-xs md:text-sm text-cyber-gray-600">No data available</p>
+                  <p className="text-xs text-cyber-gray-500">Try selecting a different month</p>
                 </div>
               )}
             </div>
           </Card>
 
-          <Card variant="cyber">
-            <h3 className="text-xl font-bold text-cyber-gray-900 mb-6 flex items-center gap-2">
-              <FileText className="w-5 h-5 text-cyber-yellow" />
+          <Card variant="cyber" className="p-3 md:p-6">
+            <h3 className="text-lg md:text-xl font-bold text-cyber-gray-900 mb-3 md:mb-6 flex items-center gap-2">
+              <FileText className="w-4 h-4 md:w-5 md:h-5 text-cyber-yellow" />
               Recent Sessions
             </h3>
 
-            <div className="space-y-4">
+            <div className="space-y-2 md:space-y-4">
               {reportData.sessions.slice(0, 5).map((session: any) => {
                 const sessionDate = format(session.createdAt.toDate(), 'yyyy-MM-dd');
                 const sessionUrl = `/attendance/${session.section}?date=${sessionDate}&time=${session.session}`;
@@ -346,17 +346,17 @@ export default function ReportsPage() {
                 return (
                   <div 
                     key={session.id} 
-                    className="flex items-center justify-between p-4 bg-cyber-gray-50 rounded-xl hover:bg-cyber-gray-100 cursor-pointer transition-colors"
+                    className="flex items-center justify-between p-2 md:p-4 bg-cyber-gray-50 rounded-xl hover:bg-cyber-gray-100 cursor-pointer transition-colors"
                     onClick={() => router.push(sessionUrl)}
                   >
                     <div>
-                      <p className="font-semibold text-cyber-gray-900">{session.section}</p>
-                      <p className="text-sm text-cyber-gray-600">
+                      <p className="font-semibold text-cyber-gray-900 text-sm md:text-base">{session.section}</p>
+                      <p className="text-xs md:text-sm text-cyber-gray-600">
                         {format(session.createdAt.toDate(), 'MMM dd, yyyy')} • {session.session}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium text-cyber-gray-900">
+                      <p className="text-xs md:text-sm font-medium text-cyber-gray-900">
                         {session.presentCount || 0}/{session.totalStudents || 0}
                       </p>
                       <p className="text-xs text-cyber-gray-600">
@@ -368,10 +368,10 @@ export default function ReportsPage() {
               })}
 
               {reportData.sessions.length === 0 && (
-                <div className="text-center py-8">
-                  <CalendarIcon className="w-12 h-12 text-cyber-gray-400 mx-auto mb-4" />
-                  <p className="text-cyber-gray-600">No sessions found</p>
-                  <p className="text-sm text-cyber-gray-500">No attendance sessions for the selected period</p>
+                <div className="text-center py-4 md:py-8">
+                  <CalendarIcon className="w-8 h-8 md:w-12 md:h-12 text-cyber-gray-400 mx-auto mb-2 md:mb-4" />
+                  <p className="text-xs md:text-sm text-cyber-gray-600">No sessions found</p>
+                  <p className="text-xs text-cyber-gray-500">No attendance sessions for the selected period</p>
                 </div>
               )}
             </div>
@@ -379,22 +379,22 @@ export default function ReportsPage() {
         </div>
 
         {/* Insights */}
-        <Card variant="glass" className="text-center">
+        <Card variant="glass" className="text-center p-4 md:p-6">
           <div className="max-w-2xl mx-auto">
-            <div className="w-16 h-16 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <Target className="w-8 h-8 text-cyber-gray-900" />
+            <div className="w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-2xl flex items-center justify-center mx-auto mb-3 md:mb-6">
+              <Target className="w-6 h-6 md:w-8 md:h-8 text-cyber-gray-900" />
             </div>
-            <h3 className="text-2xl font-bold text-cyber-gray-900 mb-4">
+            <h3 className="text-lg md:text-2xl font-bold text-cyber-gray-900 mb-2 md:mb-4">
               Data-Driven Insights 📊
             </h3>
-            <p className="text-cyber-gray-600 mb-6">
+            <p className="text-sm md:text-base text-cyber-gray-600 mb-3 md:mb-6">
               Use these reports to identify attendance patterns, track student engagement, and make informed decisions about your teaching approach.
             </p>
-            <div className="flex flex-wrap justify-center gap-4">
-              <Button onClick={() => router.push('/attendance')}>
+            <div className="flex flex-col sm:flex-row gap-2 md:gap-4 justify-center">
+              <Button onClick={() => router.push('/attendance')} className="text-sm md:text-base">
                 Take New Session
               </Button>
-              <Button variant="outline" onClick={() => router.push('/dashboard')}>
+              <Button variant="outline" onClick={() => router.push('/dashboard')} className="text-sm md:text-base">
                 Back to Dashboard
               </Button>
             </div>
