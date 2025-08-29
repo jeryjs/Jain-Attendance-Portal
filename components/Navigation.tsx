@@ -62,9 +62,6 @@ export default function Navigation() {
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
-  // Hide bottom nav on attendance section pages
-  const shouldShowBottomNav = !pathname.startsWith('/attendance/');
-
   if (!user || !isTeacher) return null;
 
   return (
@@ -96,40 +93,6 @@ export default function Navigation() {
           </Button>
         </div>
       </nav>
-
-      {/* Mobile Bottom Navigation */}
-      {shouldShowBottomNav && (
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-cyber-gray-200">
-          <div className="flex items-center justify-around px-2 py-2">
-            {navItems
-              .filter(item => !item.adminOnly || isAdmin)
-              .map((item) => {
-                const Icon = item.icon;
-                const active = isActive(item.href);
-                return (
-                  <Button
-                    key={item.href}
-                    variant="ghost"
-                    onClick={() => router.push(item.href)}
-                    className={cn(
-                      "flex flex-col items-center justify-center p-2 rounded-xl transition-all duration-300 min-w-0 flex-1",
-                      active
-                        ? "bg-cyber-yellow text-cyber-gray-900 shadow-lg transform scale-105"
-                        : "text-cyber-gray-600 hover:text-cyber-gray-900 hover:bg-cyber-gray-50"
-                    )}
-                  >
-                    <Icon className="w-5 h-5 mb-1" />
-                    {active ? (
-                      <span className="text-xs font-medium">{item.label}</span>
-                    ) : (
-                      <div className="w-2 h-2" /> // Spacer to maintain height
-                    )}
-                  </Button>
-                );
-              })}
-          </div>
-        </nav>
-      )}
 
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
@@ -213,7 +176,7 @@ export default function Navigation() {
       )}
 
       {/* Spacer for fixed navigation */}
-      <div className="h-16 lg:h-0" />
+      <div className="lg:h-0" />
       <div className="lg:ml-64" />
     </>
   );

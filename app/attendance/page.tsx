@@ -52,7 +52,7 @@ export default function AttendancePage() {
   };
 
   return (
-    <div className="min-h-screen p-4 md:p-6 lg:pb-24">
+    <div className="min-h-screen p-4 md:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Hero Header - Hidden on Mobile */}
         <div className="hidden md:block text-center mb-12">

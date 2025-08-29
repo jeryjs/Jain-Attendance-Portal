@@ -185,7 +185,7 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-6 lg:pb-24">
+    <div className="min-h-screen p-4 md:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
