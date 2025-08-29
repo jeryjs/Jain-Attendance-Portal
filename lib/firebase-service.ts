@@ -9,7 +9,9 @@ import {
   Timestamp,
   writeBatch,
   getDoc,
-  setDoc
+  setDoc,
+  limit,
+  startAt
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -146,14 +148,13 @@ export class FirebaseService {
       throw new Error('Failed to update attendance data. Please check your connection and try again.');
     }
   }
-
   // Get attendance sessions with caching
   static async getAttendanceSessions(filters?: {
     section?: string;
     teacherId?: string;
     dateRange?: { start: Date; end: Date };
-  }) {
-    const cacheKey = `sessions_${JSON.stringify(filters)}`;
+  }, count: number = 10, offset: number = 0) {
+    const cacheKey = `sessions_${JSON.stringify(filters)}_${count}_${offset}`;
     const now = Date.now();
 
     // Check cache first
@@ -163,7 +164,7 @@ export class FirebaseService {
     }
 
     try {
-      let q = query(collection(db, 'attendance_sessions'));
+      let q = query(collection(db, 'attendance_sessions'), limit(count), startAt(offset));
 
       if (filters?.section) {
         q = query(q, where('section', '==', filters.section));

@@ -62,6 +62,7 @@ export default function SectionAttendancePage() {
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [existingSession, setExistingSession] = useState<any>(null);
   const [originalAttendance, setOriginalAttendance] = useState<Record<string, boolean>>({});
+  const [sectionSessions, setSectionSessions] = useState<any[]>([]);
 
   // Date validation - restrict to reasonable range
   const isValidDate = (dateStr: string) => {
@@ -102,6 +103,9 @@ export default function SectionAttendancePage() {
       });
       setAttendance(initialAttendance);
 
+      // Load existing sessions for this section
+      await loadSectionSessions();
+
       // If valid session, load existing session data
       if (isValidSession) {
         // Get the specific session document directly
@@ -139,6 +143,18 @@ export default function SectionAttendancePage() {
       setLoadingData(false);
     }
   }
+
+  const loadSectionSessions = async () => {
+    try {
+      const sessions = await FirebaseService.getAttendanceSessions({
+        section,
+        teacherId: user?.uid
+      });
+      setSectionSessions(sessions);
+    } catch (error) {
+      console.error('Error loading section sessions:', error);
+    }
+  };
 
   useEffect(() => {
     // Filter students based on search query
@@ -336,66 +352,6 @@ export default function SectionAttendancePage() {
             <p className="text-xl text-cyber-gray-600 mb-6">
               {students.length} students • {isValidSession ? (existingSession ? (isEditMode ? 'Editing Session' : 'Viewing Session') : 'New Session') : 'Configure Session'}
             </p>
-
-            {!isValidSession && (
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="lg" glow className="px-8 py-4">
-                    <CalendarIcon className="w-5 h-5 mr-2" />
-                    Start Attendance Session
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Configure Attendance Session</DialogTitle>
-                    <DialogDescription>
-                      Select date and session time to begin taking attendance.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-sm font-medium text-cyber-gray-700">Date</label>
-                      <Calendar
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={(date) => date && setSelectedDate(date)}
-                        disabled={(date) => {
-                          const today = new Date();
-                          const twoWeeksAgo = new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000);
-                          const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
-                          return date < twoWeeksAgo || date > tomorrow;
-                        }}
-                        className="rounded-md border border-cyber-gray-200"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-cyber-gray-700">Session Time</label>
-                      <Select value={selectedSession} onValueChange={(value: SessionOption) => setSelectedSession(value)}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {SESSION_OPTIONS.map((option) => (
-                            <SelectItem key={option.key} value={option.key}>
-                              {option.value}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={handleStartSession}
-                        className="flex-1"
-                        disabled={savingAttendance}
-                      >
-                        {savingAttendance ? 'Starting...' : 'Start Session'}
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            )}
           </div>
         </div>
 
@@ -605,14 +561,145 @@ export default function SectionAttendancePage() {
 
         {/* Empty State */}
         {!isValidSession && !loadingStudents && (
-          <Card variant="cyber" className="text-center py-16">
-            <div className="w-20 h-20 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <Target className="w-10 h-10 text-cyber-gray-900" />
-            </div>
-            <h3 className="text-2xl font-bold text-cyber-gray-900 mb-4">Ready to Start</h3>
-            <p className="text-cyber-gray-600 mb-6 max-w-md mx-auto">
-              Configure your attendance session by selecting a date and time slot to begin taking attendance for Section {section}.
-            </p>
+          <div className="space-y-6">
+            {/* Start New Session Card */}
+            <Card variant="cyber" className="text-center py-12">
+              <div className="w-20 h-20 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <Target className="w-10 h-10 text-cyber-gray-900" />
+              </div>
+              <h3 className="text-2xl font-bold text-cyber-gray-900 mb-4">Ready to Start</h3>
+              <p className="text-cyber-gray-600 mb-6 max-w-md mx-auto">
+                Configure your attendance session by selecting a date and time slot to begin taking attendance for Section {section}.
+              </p>
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="lg" glow className="px-8 py-4">
+                    <CalendarIcon className="w-5 h-5 mr-2" />
+                    Start Attendance Session
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Configure Attendance Session</DialogTitle>
+                    <DialogDescription>
+                      Select date and session time to begin taking attendance.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium text-cyber-gray-700">Date</label>
+                      <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={(date) => date && setSelectedDate(date)}
+                        disabled={(date) => {
+                          const today = new Date();
+                          const twoWeeksAgo = new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000);
+                          const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+                          return date < twoWeeksAgo || date > tomorrow;
+                        }}
+                        className="rounded-md border border-cyber-gray-200"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-cyber-gray-700">Session Time</label>
+                      <Select value={selectedSession} onValueChange={(value: SessionOption) => setSelectedSession(value)}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SESSION_OPTIONS.map((option) => (
+                            <SelectItem key={option.key} value={option.key}>
+                              {option.value}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handleStartSession}
+                        className="flex-1"
+                        disabled={savingAttendance}
+                      >
+                        {savingAttendance ? 'Starting...' : 'Start Session'}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </Card>
+
+            {/* Previous Sessions */}
+            {sectionSessions.length > 0 && (
+              <Card variant="cyber">
+                <div className="p-6">
+                  <h3 className="text-xl font-bold text-cyber-gray-900 mb-4 flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-cyber-yellow" />
+                    Previous Sessions ({sectionSessions.length})
+                  </h3>
+                  <div className="space-y-3">
+                    {sectionSessions.slice(0, 5).map((session: any) => {
+                      const sessionDate = format(session.createdAt?.toDate() || new Date(), 'yyyy-MM-dd');
+                      const sessionTime = session.session;
+                      const sessionUrl = `/attendance/${section}?date=${sessionDate}&time=${sessionTime}`;
+
+                      return (
+                        <div
+                          key={session.id}
+                          className="flex items-center justify-between p-4 bg-cyber-gray-50 rounded-xl hover:bg-cyber-gray-100 cursor-pointer transition-colors group"
+                          onClick={() => router.push(sessionUrl)}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-lg flex items-center justify-center">
+                              <CalendarIcon className="w-5 h-5 text-cyber-gray-900" />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-cyber-gray-900">
+                                {format(session.createdAt?.toDate() || new Date(), 'MMM dd, yyyy')}
+                              </p>
+                              <p className="text-sm text-cyber-gray-600">{session.session}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="flex items-center gap-4">
+                              <div className="text-center">
+                                <p className="text-lg font-bold text-green-600">{session.presentCount || 0}</p>
+                                <p className="text-xs text-cyber-gray-600">Present</p>
+                              </div>
+                              <div className="text-center">
+                                <p className="text-lg font-bold text-red-600">{session.absentCount || 0}</p>
+                                <p className="text-xs text-cyber-gray-600">Absent</p>
+                              </div>
+                              <div className="text-center">
+                                <p className="text-lg font-bold text-cyber-gray-900">
+                                  {session.totalStudents > 0 ? Math.round(((session.presentCount || 0) / session.totalStudents) * 100) : 0}%
+                                </p>
+                                <p className="text-xs text-cyber-gray-600">Attendance</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {sectionSessions.length > 5 && (
+                    <div className="mt-4 text-center">
+                      <Button
+                        variant="outline"
+                        onClick={() => router.push('/reports')}
+                        className="w-full"
+                      >
+                        View All Sessions ({sectionSessions.length})
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
+
+            {/* Stats Footer */}
             <div className="flex items-center justify-center space-x-4 text-sm text-cyber-gray-500">
               <div className="flex items-center space-x-1">
                 <Users className="w-4 h-4" />
@@ -623,7 +710,7 @@ export default function SectionAttendancePage() {
                 <span>Session ready</span>
               </div>
             </div>
-          </Card>
+          </div>
         )}
       </div>
     </div>
