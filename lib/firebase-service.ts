@@ -247,6 +247,84 @@ export class FirebaseService {
     }
   }
 
+  // Save or update attendance session with consistent ID
+  static async saveOrUpdateSession(sessionData: {
+    section: string;
+    date: string;
+    session: string;
+    teacherId: string;
+    teacherEmail: string;
+    totalStudents: number;
+    records: Array<{ studentUsn: string; isPresent: boolean }>;
+    editHistory?: Array<{ timestamp: Date; email: string; details: string }>;
+  }) {
+    try {
+      // Use consistent ID format: section_date_time
+      const sessionId = `${sessionData.section}_${sessionData.date}_${sessionData.session}`;
+      const sessionRef = doc(db, 'attendance_sessions', sessionId);
+
+      // Filter only present students
+      const presentStudents = sessionData.records
+        .filter(record => record.isPresent)
+        .map(record => record.studentUsn);
+
+      const presentCount = presentStudents.length;
+      const absentCount = sessionData.records.length - presentCount;
+
+      // Check if session exists
+      const sessionSnap = await getDoc(sessionRef);
+      const isNew = !sessionSnap.exists();
+
+      const sessionDoc = {
+        section: sessionData.section,
+        date: sessionData.date,
+        session: sessionData.session,
+        teacherId: sessionData.teacherId,
+        teacherEmail: sessionData.teacherEmail,
+        totalStudents: sessionData.totalStudents,
+        presentStudents,
+        presentCount,
+        absentCount,
+        editHistory: sessionData.editHistory || [],
+        createdAt: isNew ? Timestamp.now() : sessionSnap.data()?.createdAt,
+        updatedAt: Timestamp.now()
+      };
+
+      await setDoc(sessionRef, sessionDoc);
+
+      // Clear relevant caches
+      sessionsCache.clear();
+
+      return sessionId;
+    } catch (error) {
+      console.error('Error saving/updating session:', error);
+      throw new Error('Failed to save session data. Please check your connection and try again.');
+    }
+  }
+
+  // Get session by ID directly
+  static async getSessionById(sessionId: string) {
+    try {
+      const sessionRef = doc(db, 'attendance_sessions', sessionId);
+      const sessionSnap = await getDoc(sessionRef);
+
+      if (sessionSnap.exists()) {
+        const data = sessionSnap.data();
+        return {
+          id: sessionSnap.id,
+          ...data,
+          presentStudents: data.presentStudents || [],
+          createdAt: data.createdAt,
+          updatedAt: data.updatedAt
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting session by ID:', error);
+      throw new Error('Failed to get session data. Please check your connection and try again.');
+    }
+  }
+
   // Clear all caches (useful after logout or data changes)
   static clearCache() {
     studentsCache.clear();

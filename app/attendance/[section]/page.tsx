@@ -30,7 +30,8 @@ import {
   AlertCircle,
   User,
   Edit,
-  Plus
+  Plus,
+  RefreshCw
 } from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
 import { format } from 'date-fns';
@@ -55,7 +56,7 @@ export default function SectionAttendancePage() {
   const [selectedDate, setSelectedDate] = useState<Date>(urlDate ? new Date(urlDate) : new Date());
   const [selectedSession, setSelectedSession] = useState<SessionOption>(urlTime as SessionOption || '8.45-9.45');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [loadingStudents, setLoadingStudents] = useState(true);
+  const [loadingStudents, setLoadingData] = useState(true);
   const [savingAttendance, setSavingAttendance] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
@@ -85,16 +86,12 @@ export default function SectionAttendancePage() {
   }, [user, loading, isTeacher, router]);
 
   useEffect(() => {
-    if (user && section) {
-      loadStudentsAndSession();
-    }
+    loadData();
   }, [user, section, urlDate, urlTime]);
 
-  const loadStudentsAndSession = async () => {
+  const loadData = async () => {
     try {
-      setLoadingStudents(true);
-      
-      // Load students first
+      setLoadingData(true);
       const studentsData = await FirebaseService.getStudents(section);
       setStudents(studentsData);
 
@@ -103,67 +100,45 @@ export default function SectionAttendancePage() {
       studentsData.forEach(student => {
         initialAttendance[student.usn] = false;
       });
-      
-      // Check for existing session and restore if valid params
+      setAttendance(initialAttendance);
+
+      // If valid session, load existing session data
       if (isValidSession) {
-        await restoreSessionData(studentsData, initialAttendance);
-      } else {
-        setAttendance(initialAttendance);
-        if (urlDate || urlTime) {
-          // Invalid params, show dialog
-          setIsDialogOpen(true);
-          addToast({
-            title: "Invalid Parameters",
-            description: "Please configure a valid session.",
-            variant: "destructive"
+        // Get the specific session document directly
+        const sessionDoc = await FirebaseService.getSessionById(sessionKey);
+        
+        if (sessionDoc) {
+          setExistingSession(sessionDoc);
+
+          // Restore attendance from presentStudents array
+          const restoredAttendance: Record<string, boolean> = {};
+          studentsData.forEach(student => {
+            restoredAttendance[student.usn] = sessionDoc.presentStudents?.includes(student.usn) || false;
           });
+          setAttendance(restoredAttendance);
+          setOriginalAttendance({ ...restoredAttendance });
+          
+          if (existingSession) {
+            addToast({
+              title: "Session Attendance Already Taken",
+              description: "Attendance has already been recorded for this session.",
+              variant: "default"
+            });
+          }
         }
       }
+      setLoadingData(false);
     } catch (error) {
-      console.error('Error loading students and session:', error);
-    } finally {
-      setLoadingStudents(false);
-    }
-  };
-
-  const restoreSessionData = async (studentsData: Student[], initialAttendance: Record<string, boolean>) => {
-    try {
-      const sessions = await FirebaseService.getAttendanceSessions({
-        section,
-        teacherId: user?.uid
+      console.error('Error loading data:', error);
+      addToast({
+        title: "Data Load Failed",
+        description: "Could not load data. Please try again later.",
+        variant: "destructive"
       });
-      
-      const existing = sessions.find(s => 
-        s.section === section &&
-        format(s.createdAt?.toDate() || new Date(), 'yyyy-MM-dd') === urlDate &&
-        s.session === urlTime
-      );
-      
-      if (existing) {
-        setExistingSession(existing);
-        
-        // Restore attendance from presentStudents array
-        const restoredAttendance: Record<string, boolean> = { ...initialAttendance };
-        studentsData.forEach(student => {
-          restoredAttendance[student.usn] = existing.presentStudents?.includes(student.usn) || false;
-        });
-        setAttendance(restoredAttendance);
-        setOriginalAttendance({ ...restoredAttendance }); // Track original state
-        
-        addToast({
-          title: "Session Restored",
-          description: isEditMode ? "You can now edit this session." : "Viewing existing session. Add ?edit=true to modify.",
-          variant: "success"
-        });
-      } else {
-        // No existing session, use initial attendance
-        setAttendance(initialAttendance);
-      }
-    } catch (error) {
-      console.error('Error restoring session:', error);
-      setAttendance(initialAttendance);
+    } finally {
+      setLoadingData(false);
     }
-  };
+  }
 
   useEffect(() => {
     // Filter students based on search query
@@ -229,20 +204,20 @@ export default function SectionAttendancePage() {
 
       // Generate edit summary if this is an existing session
       let newEditHistory: Array<{ timestamp: Date; email: string; details: string }> = [];
-      
+
       if (existingSession && isEditMode) {
         // Calculate changes from original to current state
         const changes = students.reduce((acc, student) => {
           const original = originalAttendance[student.usn] || false;
           const current = attendance[student.usn] || false;
-          
+
           if (original !== current) {
             if (current) acc.markedPresent++;
             else acc.markedAbsent++;
           }
           return acc;
         }, { markedPresent: 0, markedAbsent: 0 });
-        
+
         // Only add edit entry if there are actual changes
         if (changes.markedPresent > 0 || changes.markedAbsent > 0) {
           let details = '';
@@ -253,7 +228,7 @@ export default function SectionAttendancePage() {
           } else {
             details = `-${changes.markedAbsent} students marked absent`;
           }
-          
+
           // Preserve existing edit history and add new entry
           const existingEditHistory = existingSession.editHistory || [];
           newEditHistory = [...existingEditHistory, {
@@ -267,43 +242,26 @@ export default function SectionAttendancePage() {
         }
       }
 
-      const sessionData = {
+      // Use the new simplified save method
+      await FirebaseService.saveOrUpdateSession({
         section,
         date: urlDate!,
         session: urlTime!,
         teacherId: user?.uid || '',
         teacherEmail: user?.email || '',
         totalStudents: students.length,
-      };
+        records: attendanceRecords,
+        editHistory: newEditHistory
+      });
 
-      if (existingSession && isEditMode) {
-        // Update existing session
-        await FirebaseService.updateAttendanceSession(existingSession.id, {
-          records: attendanceRecords,
-          sessionData,
-          editHistory: newEditHistory
-        });
-        addToast({
-          title: "Updated!",
-          description: "Session has been updated successfully!",
-          variant: "success"
-        });
-      } else {
-        // Create new session
-        await FirebaseService.saveAttendanceBatch({
-          sessionId: '',
-          records: attendanceRecords,
-          sessionData
-        });
-        addToast({
-          title: "Saved!",
-          description: "Attendance saved successfully!",
-          variant: "success"
-        });
-      }
-      
-      setSavingAttendance(false);
-      isEditMode && router.push(`/attendance/${section}?date=${urlDate}&time=${urlTime}`);
+      addToast({
+        title: existingSession ? "Updated!" : "Saved!",
+        description: existingSession ? "Session has been updated successfully!" : "Attendance saved successfully!",
+        variant: "success"
+      });
+
+      if (isEditMode) router.replace(`/attendance/${section}?date=${urlDate}&time=${urlTime}`);
+      else router.refresh();  // avoid calling location.reload as i wanna retain the cache
     } catch (error) {
       console.error('Error saving attendance:', error);
       addToast({
@@ -311,6 +269,8 @@ export default function SectionAttendancePage() {
         description: "Error saving attendance. Please try again.",
         variant: "destructive"
       });
+    } finally {
+      setSavingAttendance(false);
     }
   };
 
@@ -344,14 +304,16 @@ export default function SectionAttendancePage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <Button
-            variant="ghost"
-            onClick={() => router.push('/attendance')}
-            className="mb-6"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Programs
-          </Button>
+          <div className="flex items-center justify-between mb-6">
+            <Button
+              variant="ghost"
+              onClick={() => router.push('/attendance')}
+              className=""
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Programs
+            </Button>
+          </div>
 
           <div className="text-center mb-8">
             <div className="flex items-center justify-center mb-4">
