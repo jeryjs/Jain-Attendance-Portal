@@ -50,7 +50,6 @@ export default function SectionAttendancePage() {
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [savingAttendance, setSavingAttendance] = useState(false);
   const [sessionStarted, setSessionStarted] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
 
@@ -132,7 +131,40 @@ export default function SectionAttendancePage() {
     try {
       setSavingAttendance(true);
 
-      // Create attendance session using FirebaseService
+      setSessionStarted(true);
+      setIsDialogOpen(false);
+
+      // Show success message
+      addToast({
+        title: "Session Started!",
+        description: "You can now mark attendance. Remember to save when done.",
+        variant: "success"
+      });
+    } catch (error) {
+      console.error('Error starting session:', error);
+      addToast({
+        title: "Error",
+        description: "Failed to start session. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingAttendance(false);
+    }
+  };
+
+  const handleSaveAttendance = async () => {
+    if (!sessionStarted) return;
+
+    try {
+      setSavingAttendance(true);
+
+      // Prepare attendance records
+      const attendanceRecords = Object.entries(attendance).map(([usn, isPresent]) => ({
+        studentUsn: usn,
+        isPresent,
+      }));
+
+      // Create session and save attendance records
       const sessionData = {
         section,
         date: format(selectedDate, 'yyyy-MM-dd'),
@@ -144,44 +176,8 @@ export default function SectionAttendancePage() {
 
       const sessionId = await FirebaseService.saveAttendanceBatch({
         sessionId: '', // Will be generated
-        records: [], // Empty for now, will be saved when attendance is marked
-        sessionData
-      });
-
-      setSessionId(sessionId);
-      setSessionStarted(true);
-      setIsDialogOpen(false);
-    } catch (error) {
-      console.error('Error creating session:', error);
-    } finally {
-      setSavingAttendance(false);
-    }
-  };
-
-  const handleSaveAttendance = async () => {
-    if (!sessionId || !sessionStarted) return;
-
-    try {
-      setSavingAttendance(true);
-
-      // Prepare attendance records
-      const attendanceRecords = Object.entries(attendance).map(([usn, isPresent]) => ({
-        studentUsn: usn,
-        isPresent,
-      }));
-
-      // Use FirebaseService to save attendance
-      await FirebaseService.saveAttendanceBatch({
-        sessionId,
         records: attendanceRecords,
-        sessionData: {
-          section,
-          date: format(selectedDate, 'yyyy-MM-dd'),
-          session: selectedSession,
-          teacherId: user?.uid || '',
-          teacherEmail: user?.email || '',
-          totalStudents: students.length,
-        }
+        sessionData
       });
 
       // Show success message and redirect
@@ -439,8 +435,8 @@ export default function SectionAttendancePage() {
                         }`}>
                           {attendance[student.usn] ? 'Present' : 'Absent'}
                         </div>
-                        <div className="text-xs text-cyber-gray-500">
-                          Click to toggle
+                        <div className="hidden sm:block text-xs text-cyber-gray-500">
+                            Click to toggle
                         </div>
                       </div>
                     </div>
