@@ -214,18 +214,27 @@ export default function DashboardPage() {
 
             {stats.recentSessions.length > 0 ? (
               <div className="space-y-4">
-                {stats.recentSessions.slice(0, 3).map((session: any) => (
-                  <div key={session.id} className="flex items-center justify-between p-4 bg-cyber-gray-50 rounded-xl">
-                    <div>
-                      <p className="font-semibold text-cyber-gray-900">{session.section}</p>
-                      <p className="text-sm text-cyber-gray-600">{format(session.createdAt.toDate(), 'MMM dd, yyyy')}</p>
+                {stats.recentSessions.slice(0, 3).map((session: any) => {
+                  const sessionDate = format(session.createdAt.toDate(), 'yyyy-MM-dd');
+                  const sessionUrl = `/attendance/${session.section}?date=${sessionDate}&time=${session.session}`;
+                  
+                  return (
+                    <div 
+                      key={session.id} 
+                      className="flex items-center justify-between p-4 bg-cyber-gray-50 rounded-xl hover:bg-cyber-gray-100 cursor-pointer transition-colors"
+                      onClick={() => router.push(sessionUrl)}
+                    >
+                      <div>
+                        <p className="font-semibold text-cyber-gray-900">{session.section}</p>
+                        <p className="text-sm text-cyber-gray-600">{format(session.createdAt.toDate(), 'MMM dd, yyyy')}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-cyber-gray-900">{session.session}</p>
+                        <p className="text-xs text-cyber-gray-600">{session.totalStudents} students</p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-cyber-gray-900">{session.session}</p>
-                      <p className="text-xs text-cyber-gray-600">{session.totalStudents} students</p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-8">

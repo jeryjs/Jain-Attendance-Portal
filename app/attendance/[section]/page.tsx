@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,7 +28,9 @@ import {
   UserCheck,
   Save,
   AlertCircle,
-  User
+  User,
+  Edit,
+  Plus
 } from 'lucide-react';
 import { useToast } from '@/contexts/ToastContext';
 import { format } from 'date-fns';
@@ -38,20 +40,43 @@ import { Student, SessionOption, SESSION_OPTIONS } from '@/lib/types';
 export default function SectionAttendancePage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, loading, isTeacher } = useAuth();
   const { addToast } = useToast();
   const section = params.section as string;
 
+  // URL parameters
+  const urlDate = searchParams.get('date');
+  const urlTime = searchParams.get('time');
+  const isEditMode = searchParams.get('edit') === 'true';
+
   const [students, setStudents] = useState<Student[]>([]);
   const [attendance, setAttendance] = useState<Record<string, boolean>>({});
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [selectedSession, setSelectedSession] = useState<SessionOption>('8.45-9.45');
+  const [selectedDate, setSelectedDate] = useState<Date>(urlDate ? new Date(urlDate) : new Date());
+  const [selectedSession, setSelectedSession] = useState<SessionOption>(urlTime as SessionOption || '8.45-9.45');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [savingAttendance, setSavingAttendance] = useState(false);
-  const [sessionStarted, setSessionStarted] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
+  const [existingSession, setExistingSession] = useState<any>(null);
+  const [originalAttendance, setOriginalAttendance] = useState<Record<string, boolean>>({});
+
+  // Date validation - restrict to reasonable range
+  const isValidDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const today = new Date();
+    const twoWeeksAgo = new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000);
+    const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+    return date >= twoWeeksAgo && date <= tomorrow;
+  };
+
+  // Check if session params are valid
+  const isValidSession = urlDate && urlTime && 
+    SESSION_OPTIONS.some(opt => opt.key === urlTime) && 
+    isValidDate(urlDate);
+  const sessionKey = `${section}_${urlDate}_${urlTime}`;
+  const isViewOnly = !(isValidSession && (!existingSession || isEditMode));
 
   useEffect(() => {
     if (!loading && (!user || !isTeacher)) {
@@ -61,9 +86,84 @@ export default function SectionAttendancePage() {
 
   useEffect(() => {
     if (user && section) {
-      loadStudents();
+      loadStudentsAndSession();
     }
-  }, [user, section]);
+  }, [user, section, urlDate, urlTime]);
+
+  const loadStudentsAndSession = async () => {
+    try {
+      setLoadingStudents(true);
+      
+      // Load students first
+      const studentsData = await FirebaseService.getStudents(section);
+      setStudents(studentsData);
+
+      // Initialize attendance state
+      const initialAttendance: Record<string, boolean> = {};
+      studentsData.forEach(student => {
+        initialAttendance[student.usn] = false;
+      });
+      
+      // Check for existing session and restore if valid params
+      if (isValidSession) {
+        await restoreSessionData(studentsData, initialAttendance);
+      } else {
+        setAttendance(initialAttendance);
+        if (urlDate || urlTime) {
+          // Invalid params, show dialog
+          setIsDialogOpen(true);
+          addToast({
+            title: "Invalid Parameters",
+            description: "Please configure a valid session.",
+            variant: "destructive"
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error loading students and session:', error);
+    } finally {
+      setLoadingStudents(false);
+    }
+  };
+
+  const restoreSessionData = async (studentsData: Student[], initialAttendance: Record<string, boolean>) => {
+    try {
+      const sessions = await FirebaseService.getAttendanceSessions({
+        section,
+        teacherId: user?.uid
+      });
+      
+      const existing = sessions.find(s => 
+        s.section === section &&
+        format(s.createdAt?.toDate() || new Date(), 'yyyy-MM-dd') === urlDate &&
+        s.session === urlTime
+      );
+      
+      if (existing) {
+        setExistingSession(existing);
+        
+        // Restore attendance from presentStudents array
+        const restoredAttendance: Record<string, boolean> = { ...initialAttendance };
+        studentsData.forEach(student => {
+          restoredAttendance[student.usn] = existing.presentStudents?.includes(student.usn) || false;
+        });
+        setAttendance(restoredAttendance);
+        setOriginalAttendance({ ...restoredAttendance }); // Track original state
+        
+        addToast({
+          title: "Session Restored",
+          description: isEditMode ? "You can now edit this session." : "Viewing existing session. Add ?edit=true to modify.",
+          variant: "success"
+        });
+      } else {
+        // No existing session, use initial attendance
+        setAttendance(initialAttendance);
+      }
+    } catch (error) {
+      console.error('Error restoring session:', error);
+      setAttendance(initialAttendance);
+    }
+  };
 
   useEffect(() => {
     // Filter students based on search query
@@ -78,28 +178,10 @@ export default function SectionAttendancePage() {
     }
   }, [searchQuery, students]);
 
-  const loadStudents = async () => {
-    try {
-      setLoadingStudents(true);
-      const studentsData = await FirebaseService.getStudents(section);
 
-      setStudents(studentsData);
-
-      // Initialize attendance state
-      const initialAttendance: Record<string, boolean> = {};
-      studentsData.forEach(student => {
-        initialAttendance[student.usn] = false;
-      });
-      setAttendance(initialAttendance);
-    } catch (error) {
-      console.error('Error loading students:', error);
-    } finally {
-      setLoadingStudents(false);
-    }
-  };
 
   const toggleAttendance = (usn: string) => {
-    if (!sessionStarted) return;
+    if (!isValidSession || (existingSession && !isEditMode)) return;
 
     setAttendance(prev => ({
       ...prev,
@@ -108,7 +190,7 @@ export default function SectionAttendancePage() {
   };
 
   const markAllPresent = () => {
-    if (!sessionStarted) return;
+    if (!isValidSession || (existingSession && !isEditMode)) return;
 
     const newAttendance: Record<string, boolean> = {};
     students.forEach(student => {
@@ -118,7 +200,7 @@ export default function SectionAttendancePage() {
   };
 
   const markAllAbsent = () => {
-    if (!sessionStarted) return;
+    if (!isValidSession || (existingSession && !isEditMode)) return;
 
     const newAttendance: Record<string, boolean> = {};
     students.forEach(student => {
@@ -128,65 +210,100 @@ export default function SectionAttendancePage() {
   };
 
   const handleStartSession = async () => {
-    try {
-      setSavingAttendance(true);
-
-      setSessionStarted(true);
-      setIsDialogOpen(false);
-
-      // Show success message
-      addToast({
-        title: "Session Started!",
-        description: "You can now mark attendance. Remember to save when done.",
-        variant: "success"
-      });
-    } catch (error) {
-      console.error('Error starting session:', error);
-      addToast({
-        title: "Error",
-        description: "Failed to start session. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setSavingAttendance(false);
-    }
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    const timeStr = selectedSession;
+    router.push(`/attendance/${section}?date=${dateStr}&time=${timeStr}`);
+    setIsDialogOpen(false);
   };
 
   const handleSaveAttendance = async () => {
-    if (!sessionStarted) return;
+    if (!isValidSession) return;
 
     try {
       setSavingAttendance(true);
 
-      // Prepare attendance records
       const attendanceRecords = Object.entries(attendance).map(([usn, isPresent]) => ({
         studentUsn: usn,
         isPresent,
       }));
 
-      // Create session and save attendance records
+      // Generate edit summary if this is an existing session
+      let newEditHistory: Array<{ timestamp: Date; email: string; details: string }> = [];
+      
+      if (existingSession && isEditMode) {
+        // Calculate changes from original to current state
+        const changes = students.reduce((acc, student) => {
+          const original = originalAttendance[student.usn] || false;
+          const current = attendance[student.usn] || false;
+          
+          if (original !== current) {
+            if (current) acc.markedPresent++;
+            else acc.markedAbsent++;
+          }
+          return acc;
+        }, { markedPresent: 0, markedAbsent: 0 });
+        
+        // Only add edit entry if there are actual changes
+        if (changes.markedPresent > 0 || changes.markedAbsent > 0) {
+          let details = '';
+          if (changes.markedPresent > 0 && changes.markedAbsent > 0) {
+            details = `+${changes.markedPresent} & -${changes.markedAbsent} students`;
+          } else if (changes.markedPresent > 0) {
+            details = `+${changes.markedPresent} students marked present`;
+          } else {
+            details = `-${changes.markedAbsent} students marked absent`;
+          }
+          
+          // Preserve existing edit history and add new entry
+          const existingEditHistory = existingSession.editHistory || [];
+          newEditHistory = [...existingEditHistory, {
+            timestamp: new Date(),
+            email: user?.email || '',
+            details
+          }];
+        } else {
+          // No changes, keep existing history
+          newEditHistory = existingSession.editHistory || [];
+        }
+      }
+
       const sessionData = {
         section,
-        date: format(selectedDate, 'yyyy-MM-dd'),
-        session: selectedSession,
+        date: urlDate!,
+        session: urlTime!,
         teacherId: user?.uid || '',
         teacherEmail: user?.email || '',
         totalStudents: students.length,
       };
 
-      const sessionId = await FirebaseService.saveAttendanceBatch({
-        sessionId: '', // Will be generated
-        records: attendanceRecords,
-        sessionData
-      });
-
-      // Show success message and redirect
-      addToast({
-        title: "Success!",
-        description: "Attendance saved successfully!",
-        variant: "success"
-      });
-      router.push('/attendance');
+      if (existingSession && isEditMode) {
+        // Update existing session
+        await FirebaseService.updateAttendanceSession(existingSession.id, {
+          records: attendanceRecords,
+          sessionData,
+          editHistory: newEditHistory
+        });
+        addToast({
+          title: "Updated!",
+          description: "Session has been updated successfully!",
+          variant: "success"
+        });
+      } else {
+        // Create new session
+        await FirebaseService.saveAttendanceBatch({
+          sessionId: '',
+          records: attendanceRecords,
+          sessionData
+        });
+        addToast({
+          title: "Saved!",
+          description: "Attendance saved successfully!",
+          variant: "success"
+        });
+      }
+      
+      setSavingAttendance(false);
+      isEditMode && router.push(`/attendance/${section}?date=${urlDate}&time=${urlTime}`);
     } catch (error) {
       console.error('Error saving attendance:', error);
       addToast({
@@ -194,16 +311,7 @@ export default function SectionAttendancePage() {
         description: "Error saving attendance. Please try again.",
         variant: "destructive"
       });
-    } finally {
-      setSavingAttendance(false);
     }
-  };
-
-  const handleQuickMark = (usn: string) => {
-    if (!sessionStarted) return;
-
-    toggleAttendance(usn);
-    setSearchQuery('');
   };
 
   const getAttendanceStats = () => {
@@ -264,10 +372,10 @@ export default function SectionAttendancePage() {
             </h1>
 
             <p className="text-xl text-cyber-gray-600 mb-6">
-              {students.length} students • {sessionStarted ? 'Session Active' : 'Ready to Start'}
+              {students.length} students • {isValidSession ? (existingSession ? (isEditMode ? 'Editing Session' : 'Viewing Session') : 'New Session') : 'Configure Session'}
             </p>
 
-            {!sessionStarted && (
+            {!isValidSession && (
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
                   <Button size="lg" glow className="px-8 py-4">
@@ -289,7 +397,12 @@ export default function SectionAttendancePage() {
                         mode="single"
                         selected={selectedDate}
                         onSelect={(date) => date && setSelectedDate(date)}
-                        disabled={(date) => date > new Date() || date < new Date('2025-08-28')}
+                        disabled={(date) => {
+                          const today = new Date();
+                          const twoWeeksAgo = new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000);
+                          const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+                          return date < twoWeeksAgo || date > tomorrow;
+                        }}
                         className="rounded-md border border-cyber-gray-200"
                       />
                     </div>
@@ -325,7 +438,7 @@ export default function SectionAttendancePage() {
         </div>
 
         {/* Session Info & Stats */}
-        {sessionStarted && (
+        {isValidSession && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <Card variant="cyber" className="text-center">
               <div className="w-10 h-10 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-lg flex items-center justify-center mx-auto mb-2">
@@ -362,7 +475,7 @@ export default function SectionAttendancePage() {
         )}
 
         {/* Attendance Views */}
-        {sessionStarted && (
+        {isValidSession && (
           <Tabs defaultValue="table" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-8">
               <TabsTrigger value="table" className="flex items-center gap-2">
@@ -380,14 +493,14 @@ export default function SectionAttendancePage() {
               <Card variant="cyber">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-xl font-bold text-cyber-gray-900">Student List</h3>
-                  <div className="flex gap-3">
+                  {!isViewOnly && <div className="flex gap-3">
                     <Button variant="outline" size="sm" onClick={markAllPresent}>
                       Mark All Present
                     </Button>
                     <Button variant="outline" size="sm" onClick={markAllAbsent}>
                       Mark All Absent
                     </Button>
-                  </div>
+                  </div>}
                 </div>
 
                 {/* Search Bar */}
@@ -435,9 +548,9 @@ export default function SectionAttendancePage() {
                         }`}>
                           {attendance[student.usn] ? 'Present' : 'Absent'}
                         </div>
-                        <div className="hidden sm:block text-xs text-cyber-gray-500">
+                        {!isViewOnly && (<div className="text-xs text-cyber-gray-500 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             Click to toggle
-                        </div>
+                        </div>)}
                       </div>
                     </div>
                   ))}
@@ -489,7 +602,7 @@ export default function SectionAttendancePage() {
         )}
 
         {/* Save Attendance Button */}
-        {sessionStarted && (
+        {isValidSession && (!existingSession || isEditMode) && (
           <div className="fixed bottom-6 right-6 z-50">
             <Button
               size="lg"
@@ -501,20 +614,35 @@ export default function SectionAttendancePage() {
               {savingAttendance ? (
                 <>
                   <div className="w-5 h-5 border-2 border-cyber-gray-900/30 border-t-cyber-gray-900 rounded-full animate-spin mr-2" />
-                  Saving...
+                  {existingSession ? 'Updating...' : 'Saving...'}
                 </>
               ) : (
                 <>
                   <Save className="w-5 h-5 mr-2" />
-                  Save Attendance ({stats.present}/{stats.total})
+                  {existingSession ? 'Update' : 'Save'} Attendance ({stats.present}/{stats.total})
                 </>
               )}
             </Button>
           </div>
         )}
 
+        {/* Edit FAB for existing sessions */}
+        {isValidSession && existingSession && !isEditMode && (
+          <div className="fixed bottom-6 right-6 z-50">
+            <Button
+              size="lg"
+              glow
+              onClick={() => router.push(`/attendance/${section}?date=${urlDate}&time=${urlTime}&edit=true`)}
+              className="px-6 py-4 shadow-2xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold hover:shadow-blue-500/25 rounded-full"
+            >
+              <Edit className="w-5 h-5 mr-2" />
+              Edit
+            </Button>
+          </div>
+        )}
+
         {/* Empty State */}
-        {!sessionStarted && !loadingStudents && (
+        {!isValidSession && !loadingStudents && (
           <Card variant="cyber" className="text-center py-16">
             <div className="w-20 h-20 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-2xl flex items-center justify-center mx-auto mb-6">
               <Target className="w-10 h-10 text-cyber-gray-900" />

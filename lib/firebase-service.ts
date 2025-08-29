@@ -112,6 +112,41 @@ export class FirebaseService {
     }
   }
 
+  // Update existing attendance session
+  static async updateAttendanceSession(sessionId: string, updateData: {
+    records: Array<{ studentUsn: string; isPresent: boolean }>;
+    sessionData: any;
+    editHistory?: Array<{ timestamp: Date; email: string; details: string }>;
+  }) {
+    try {
+      const sessionRef = doc(db, 'attendance_sessions', sessionId);
+      
+      // Filter only present students
+      const presentStudents = updateData.records
+        .filter(record => record.isPresent)
+        .map(record => record.studentUsn);
+
+      const presentCount = presentStudents.length;
+      const absentCount = updateData.records.length - presentCount;
+
+      await updateDoc(sessionRef, {
+        presentStudents,
+        presentCount,
+        absentCount,
+        updatedAt: Timestamp.now(),
+        editHistory: updateData.editHistory || []
+      });
+
+      // Clear relevant caches
+      sessionsCache.clear();
+      
+      return sessionId;
+    } catch (error) {
+      console.error('Error updating attendance session:', error);
+      throw new Error('Failed to update attendance data. Please check your connection and try again.');
+    }
+  }
+
   // Get attendance sessions with caching
   static async getAttendanceSessions(filters?: {
     section?: string;

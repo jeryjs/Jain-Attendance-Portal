@@ -339,24 +339,33 @@ export default function ReportsPage() {
             </h3>
 
             <div className="space-y-4">
-              {reportData.sessions.slice(0, 5).map((session: any) => (
-                <div key={session.id} className="flex items-center justify-between p-4 bg-cyber-gray-50 rounded-xl">
-                  <div>
-                    <p className="font-semibold text-cyber-gray-900">{session.section}</p>
-                    <p className="text-sm text-cyber-gray-600">
-                      {format(session.createdAt.toDate(), 'MMM dd, yyyy')} • {session.session}
-                    </p>
+              {reportData.sessions.slice(0, 5).map((session: any) => {
+                const sessionDate = format(session.createdAt.toDate(), 'yyyy-MM-dd');
+                const sessionUrl = `/attendance/${session.section}?date=${sessionDate}&time=${session.session}`;
+                
+                return (
+                  <div 
+                    key={session.id} 
+                    className="flex items-center justify-between p-4 bg-cyber-gray-50 rounded-xl hover:bg-cyber-gray-100 cursor-pointer transition-colors"
+                    onClick={() => router.push(sessionUrl)}
+                  >
+                    <div>
+                      <p className="font-semibold text-cyber-gray-900">{session.section}</p>
+                      <p className="text-sm text-cyber-gray-600">
+                        {format(session.createdAt.toDate(), 'MMM dd, yyyy')} • {session.session}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-cyber-gray-900">
+                        {session.presentCount || 0}/{session.totalStudents || 0}
+                      </p>
+                      <p className="text-xs text-cyber-gray-600">
+                        {session.totalStudents > 0 ? Math.round(((session.presentCount || 0) / session.totalStudents) * 100) : 0}% attendance
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-cyber-gray-900">
-                      {session.presentCount || 0}/{session.totalStudents || 0}
-                    </p>
-                    <p className="text-xs text-cyber-gray-600">
-                      {session.totalStudents > 0 ? Math.round(((session.presentCount || 0) / session.totalStudents) * 100) : 0}% attendance
-                    </p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
 
               {reportData.sessions.length === 0 && (
                 <div className="text-center py-8">
