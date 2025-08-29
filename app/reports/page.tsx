@@ -23,8 +23,6 @@ import {
 } from 'lucide-react';
 import { FirebaseService } from '@/lib/firebase-service';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
-import { db } from '@/lib/firebase';
-import { query, collection, where, orderBy, getDocs } from 'firebase/firestore';
 
 interface ReportData {
   sessions: any[];
@@ -67,64 +65,50 @@ export default function ReportsPage() {
   }, [user, selectedMonth, selectedSection]);
 
   const loadReportData = async () => {
+    if (!user?.uid) return;
+
     try {
       setLoadingReports(true);
 
-      const monthStart = startOfMonth(selectedMonth);
-      const monthEnd = endOfMonth(selectedMonth);
-
-      // Load sessions for the selected month
-      let sessionsQuery = query(
-        collection(db, 'attendance_sessions'),
-        where('teacherId', '==', user?.uid),
-        orderBy('createdAt', 'desc')
-      );
-
-      const sessionsSnapshot = await getDocs(sessionsQuery);
-      let sessions = sessionsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as any));
-
-      // Filter by month
-      sessions = sessions.filter(session => {
-        const sessionDate = session.createdAt.toDate();
-        return sessionDate >= monthStart && sessionDate <= monthEnd;
+      // Get all sessions for this teacher (using optimized FirebaseService)
+      const sessions = await FirebaseService.getAttendanceSessions({
+        teacherId: user.uid
       });
 
-      // Filter by section if selected
+      // Filter by selected month if specified
+      let filteredSessions = sessions;
+      if (selectedMonth) {
+        const monthStart = startOfMonth(selectedMonth);
+        const monthEnd = endOfMonth(selectedMonth);
+
+        filteredSessions = sessions.filter(session => {
+          const sessionDate = session.createdAt?.toDate();
+          return sessionDate && sessionDate >= monthStart && sessionDate <= monthEnd;
+        });
+      }
+
+      // Filter by section if specified
       if (selectedSection !== 'all') {
-        sessions = sessions.filter(session => session.section === selectedSection);
+        filteredSessions = filteredSessions.filter(session => session.section === selectedSection);
       }
 
-      // Load attendance records for these sessions
-      const sessionIds = sessions.map(s => s.id);
-      let attendanceRecords: any[] = [];
+      // Calculate attendance stats from session documents (no separate queries needed!)
+      const attendanceStats = {
+        totalPresent: 0,
+        totalAbsent: 0,
+        averageAttendance: 0
+      };
 
-      if (sessionIds.length > 0) {
-        const recordsQuery = query(
-          collection(db, 'attendance_records'),
-          where('sessionId', 'in', sessionIds.slice(0, 10)) // Firestore 'in' limit
-        );
-        const recordsSnapshot = await getDocs(recordsQuery);
-        attendanceRecords = recordsSnapshot.docs.map(doc => doc.data());
-      }
+      // Calculate section-wise stats from embedded data
+      const sectionStats: Record<string, { present: number; absent: number; total: number; percentage: number }> = {};
 
-      // Calculate stats
-      const totalPresent = attendanceRecords.filter(r => r.isPresent).length;
-      const totalAbsent = attendanceRecords.filter(r => !r.isPresent).length;
-      const averageAttendance = attendanceRecords.length > 0
-        ? Math.round((totalPresent / attendanceRecords.length) * 100)
-        : 0;
+      filteredSessions.forEach(session => {
+        const present = session.presentCount || 0;
+        const absent = session.absentCount || 0;
+        const total = session.totalStudents || 0;
 
-      // Calculate section stats
-      const sectionStats: Record<string, any> = {};
-      sessions.forEach(session => {
-        const sectionRecords = attendanceRecords.filter(r => r.sessionId === session.id);
-        const present = sectionRecords.filter(r => r.isPresent).length;
-        const absent = sectionRecords.filter(r => !r.isPresent).length;
-        const total = sectionRecords.length;
-        const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+        attendanceStats.totalPresent += present;
+        attendanceStats.totalAbsent += absent;
 
         if (!sectionStats[session.section]) {
           sectionStats[session.section] = { present: 0, absent: 0, total: 0, percentage: 0 };
@@ -133,18 +117,24 @@ export default function ReportsPage() {
         sectionStats[session.section].present += present;
         sectionStats[session.section].absent += absent;
         sectionStats[session.section].total += total;
-        sectionStats[session.section].percentage = sectionStats[session.section].total > 0
-          ? Math.round((sectionStats[session.section].present / sectionStats[session.section].total) * 100)
-          : 0;
       });
 
+      // Calculate percentages
+      Object.keys(sectionStats).forEach(section => {
+        const stats = sectionStats[section];
+        stats.percentage = stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0;
+      });
+
+      attendanceStats.averageAttendance = filteredSessions.length > 0 ?
+        Math.round((attendanceStats.totalPresent / (attendanceStats.totalPresent + attendanceStats.totalAbsent)) * 100) : 0;
+
       // Get unique sections
-      const uniqueSections = [...new Set(sessions.map(s => s.section))];
+      const uniqueSections = [...new Set(sessions.map(s => s.section))].filter(Boolean) as string[];
 
       setSections(uniqueSections);
       setReportData({
-        sessions,
-        attendanceStats: { totalPresent, totalAbsent, averageAttendance },
+        sessions: filteredSessions,
+        attendanceStats,
         sectionStats
       });
     } catch (error) {

@@ -60,7 +60,7 @@ export class FirebaseService {
     }
   }
 
-  // Batch save attendance records
+  // Batch save attendance records (optimized: store only present students in session)
   static async saveAttendanceBatch(attendanceData: {
     sessionId: string;
     records: Array<{
@@ -79,37 +79,27 @@ export class FirebaseService {
     const batch = writeBatch(db);
 
     try {
-      // Create session document
+      // Filter only present students
+      const presentStudents = attendanceData.records
+        .filter(record => record.isPresent)
+        .map(record => record.studentUsn);
+
+      // Calculate counts
+      const presentCount = presentStudents.length;
+      const absentCount = attendanceData.records.length - presentCount;
+
+      // Create session document with embedded attendance data
       const sessionRef = doc(collection(db, 'attendance_sessions'));
       batch.set(sessionRef, {
         ...attendanceData.sessionData,
+        presentStudents, // Array of USNs who are present
+        presentCount,
+        absentCount,
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
       });
 
-      // Add attendance records
-      const recordsRef = collection(db, 'attendance_records');
-      attendanceData.records.forEach(record => {
-        const recordRef = doc(recordsRef);
-        batch.set(recordRef, {
-          sessionId: sessionRef.id,
-          ...record,
-          markedAt: Timestamp.now(),
-          markedBy: attendanceData.sessionData.teacherId,
-        });
-      });
-
       await batch.commit();
-
-      // Update session with final counts
-      const presentCount = attendanceData.records.filter(r => r.isPresent).length;
-      const absentCount = attendanceData.records.length - presentCount;
-
-      await updateDoc(sessionRef, {
-        presentCount,
-        absentCount,
-        updatedAt: Timestamp.now(),
-      });
 
       // Clear relevant caches
       sessionsCache.clear();
@@ -182,7 +172,7 @@ export class FirebaseService {
         };
       }
 
-      // Calculate stats
+      // Calculate stats from session documents (presentStudents array)
       const totalSessions = sessions.length;
       const totalStudents = Math.max(...sessions.map(s => s.totalStudents || 0));
       const totalPresent = sessions.reduce((sum, s) => sum + (s.presentCount || 0), 0);
