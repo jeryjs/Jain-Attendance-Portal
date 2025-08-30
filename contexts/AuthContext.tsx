@@ -36,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 					let role: 'student' | 'teacher' | 'admin' = 'student';
 					const email = firebaseUser.email || '';
-					if (/^[a-zA-Z]+\.[a-zA-Z]+@jainuniversity\.ac\.in$/.test(email)) {
+					if (/^[a-zA-Z]+\.?[a-zA-Z]+@jainuniversity\.ac\.in$/.test(email)) {
 						role = 'teacher';
 					} else if (ADMIN_EMAILS.includes(email.toLowerCase())) {
 						role = 'admin';
