@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
+import { DatePicker } from "@/components/ui/date-picker";
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -816,12 +816,17 @@ export default function SectionAttendancePage() {
                   </DialogHeader>
                   <div className="space-y-3 md:space-y-4">
                     <div>
-                      <label className="text-sm font-medium text-cyber-gray-700">Date</label>
-                      <Calendar
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={(date) => date && setSelectedDate(date)}
-                        className="rounded-md border border-cyber-gray-200"
+                      <label className="text-sm font-medium text-cyber-gray-700 mb-2 block">Date</label>
+                      <DatePicker
+                        date={selectedDate}
+                        onDateChange={(date) => date && setSelectedDate(date)}
+                        placeholder="Select session date"
+                        disabledDates={(date) => {
+                          const today = new Date();
+                          const twoWeeksAgo = new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000);
+                          const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+                          return date < twoWeeksAgo || date > tomorrow || date.getDay() === 0;
+                        }}
                       />
                     </div>
                     <div>

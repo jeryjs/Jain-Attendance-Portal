@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar } from '@/components/ui/calendar';
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   BarChart3,
   Calendar as CalendarIcon,
@@ -220,11 +220,11 @@ export default function ReportsPage() {
           <Card variant="cyber" className="p-3 md:p-6">
             <div className="space-y-2">
               <label className="text-xs md:text-sm font-medium text-cyber-gray-700">Select Month</label>
-              <Calendar
-                mode="single"
-                selected={selectedMonth}
-                onSelect={(date) => date && setSelectedMonth(date)}
-                className="rounded-md border border-cyber-gray-200"
+              <DatePicker
+                date={selectedMonth}
+                onDateChange={(date) => date && setSelectedMonth(date)}
+                placeholder="Select month for report"
+                disabledDates={() => false}
               />
             </div>
           </Card>
