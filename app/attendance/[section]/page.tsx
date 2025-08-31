@@ -13,6 +13,7 @@ import { FirebaseService } from '@/lib/firebase-service';
 import { SESSION_OPTIONS, SessionOption, Student } from '@/lib/types';
 import { format } from 'date-fns';
 import {
+  AlertTriangle,
   ArrowDown,
   ArrowLeft,
   ArrowUp,
@@ -214,52 +215,55 @@ export default function SectionAttendancePage() {
 
   // Navigation warning for unsaved changes
   useEffect(() => {
-    const hasUnsavedChanges = () => {
-      if (!isValidSession || !originalAttendance) return false;
+    const hasUnsaved =
+      isValidSession &&
+      originalAttendance &&
+      Object.keys(attendance).some(
+        usn => (attendance[usn] ?? false) !== (originalAttendance[usn] ?? false)
+      );
+    const warn = 'You have unsaved attendance changes. Are you sure you want to leave without saving?';
 
-      return Object.keys(attendance).some(usn => {
-        const current = attendance[usn] || false;
-        const original = originalAttendance[usn] || false;
-        return current !== original;
-      });
-    };
+    const confirmOrStay = () => hasUnsaved && !window.confirm(warn);
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasUnsavedChanges()) {
+      if (confirmOrStay()) {
         e.preventDefault();
-        e.returnValue = 'You have unsaved attendance changes. Are you sure you want to leave?';
-        return e.returnValue;
+        e.returnValue = warn;
+        return warn;
       }
     };
 
     const handlePopState = (e: PopStateEvent) => {
-      if (hasUnsavedChanges()) {
-        const confirmed = window.confirm(
-          'You have unsaved attendance changes. Are you sure you want to leave without saving?'
-        );
-        if (!confirmed) {
-          // Push the current state back to prevent navigation
-          window.history.pushState(null, '', window.location.href);
-          e.preventDefault();
-          return;
-        }
+      if (confirmOrStay()) {
+        window.history.pushState(null, '', window.location.href);
+        e.preventDefault?.();
       }
     };
 
-    // Add event listeners
+    // Next.js router event (if available)
+    // @ts-ignore
+    const handleRouteChangeStart = (url: string) => {
+      if (confirmOrStay()) {
+        // @ts-ignore
+        router.events?.emit('routeChangeError');
+        throw 'Route change aborted due to unsaved changes';
+      }
+    };
+
     window.addEventListener('beforeunload', handleBeforeUnload);
     window.addEventListener('popstate', handlePopState);
+    // @ts-ignore
+    router.events?.on?.('routeChangeStart', handleRouteChangeStart);
 
-    // Push initial state to enable popstate detection
-    if (hasUnsavedChanges()) {
-      window.history.pushState(null, '', window.location.href);
-    }
+    if (hasUnsaved) window.history.pushState(null, '', window.location.href);
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('popstate', handlePopState);
+      // @ts-ignore
+      router.events?.off?.('routeChangeStart', handleRouteChangeStart);
     };
-  }, [attendance, originalAttendance, isValidSession]);
+  }, [attendance, originalAttendance, isValidSession, router]);
 
   const toggleAttendance = (usn: string) => {
     if (!isValidSession || (existingSession && !isEditMode)) return;
@@ -311,6 +315,14 @@ export default function SectionAttendancePage() {
   };
 
   const handleStartSession = async () => {
+    // Check for unsaved changes before proceeding
+    if (hasUnsavedChanges()) {
+      const confirmed = window.confirm(
+        'You have unsaved attendance changes. Starting a new session will lose these changes. Are you sure you want to continue?'
+      );
+      if (!confirmed) return;
+    }
+
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
     const timeStr = selectedSession;
     router.push(`/attendance/${encodeURIComponent(section)}?date=${dateStr}&time=${timeStr}`);
@@ -451,6 +463,70 @@ export default function SectionAttendancePage() {
   return (
     <div className="min-h-screen p-2 md:p-6">
       <div className="max-w-7xl mx-auto">
+        {/* Configure Session Dialog */}
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="sm:max-w-md mx-4">
+            <DialogHeader>
+              <DialogTitle className="text-lg md:text-xl">Configure Attendance Session</DialogTitle>
+              <DialogDescription className="text-sm md:text-base">
+                Select date and session time to begin taking attendance.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 md:space-y-4">
+              <div>
+                <label className="text-sm font-medium text-cyber-gray-700 mb-2 block">Date</label>
+                <DatePicker
+                  date={selectedDate}
+                  onDateChange={(date) => date && setSelectedDate(date)}
+                  placeholder="Select session date"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-cyber-gray-700">Session Time</label>
+                <Select value={selectedSession} onValueChange={(value: SessionOption) => setSelectedSession(value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SESSION_OPTIONS.map((option) => (
+                      <SelectItem key={option.key} value={option.key}>
+                        {option.value}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+            {/* Warning for unsaved changes */}
+            {hasUnsavedChanges() && (
+              <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-3 md:p-4 shadow-sm">
+                <div className="flex items-start gap-2 md:gap-3">
+                  <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <h4 className="text-sm md:text-base font-semibold text-amber-800 mb-1">
+                      You have unsaved attendance changes.
+                    </h4>
+                    <p className="text-xs md:text-sm text-amber-700">
+                      Changing the session configuration will navigate to a new session and your current changes will be lost. Make sure to save your attendance first.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleStartSession}
+                  className="flex-1"
+                  disabled={savingAttendance}
+                >
+                  {savingAttendance ? 'Starting...' : 'Start Session'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+        
         {/* Header */}
         <div className="mb-4 md:mb-8">
           <div className="flex items-center justify-between mb-3 md:mb-6">
@@ -491,7 +567,11 @@ export default function SectionAttendancePage() {
         {/* Session Info & Stats */}
         {isValidSession && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-6 mb-4 md:mb-8">
-            <Card variant="cyber" className="text-center p-3 md:p-6">
+            <Card
+              variant="cyber"
+              className="text-center p-3 md:p-6 cursor-pointer hover:scale-105 transition-all duration-300"
+              onClick={() => setIsDialogOpen(true)}
+            >
               <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-lg flex items-center justify-center mx-auto mb-1 md:mb-2">
                 <CalendarIcon className="w-4 h-4 md:w-5 md:h-5 text-cyber-gray-900" />
               </div>
@@ -499,7 +579,11 @@ export default function SectionAttendancePage() {
               <div className="text-xs text-cyber-gray-600">Session Date</div>
             </Card>
 
-            <Card variant="cyber" className="text-center p-3 md:p-6">
+            <Card
+              variant="cyber"
+              className="text-center p-3 md:p-6 cursor-pointer hover:scale-105 transition-all duration-300"
+              onClick={() => setIsDialogOpen(true)}
+            >
               <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-lg flex items-center justify-center mx-auto mb-1 md:mb-2">
                 <Clock className="w-4 h-4 md:w-5 md:h-5 text-cyber-gray-900" />
               </div>
@@ -800,56 +884,15 @@ export default function SectionAttendancePage() {
               <p className="text-sm md:text-base text-cyber-gray-600 mb-4 md:mb-6 max-w-md mx-auto px-2">
                 Configure your attendance session by selecting a date and time slot to begin taking attendance for Section {section}.
               </p>
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="lg" glow className="px-6 md:px-8 py-2 md:py-4 text-sm md:text-base">
-                    <CalendarIcon className="w-4 h-4 md:w-5 md:h-5 mr-2" />
-                    Start Attendance Session
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md mx-4">
-                  <DialogHeader>
-                    <DialogTitle className="text-lg md:text-xl">Configure Attendance Session</DialogTitle>
-                    <DialogDescription className="text-sm md:text-base">
-                      Select date and session time to begin taking attendance.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-3 md:space-y-4">
-                    <div>
-                      <label className="text-sm font-medium text-cyber-gray-700 mb-2 block">Date</label>
-                      <DatePicker
-                        date={selectedDate}
-                        onDateChange={(date) => date && setSelectedDate(date)}
-                        placeholder="Select session date"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-cyber-gray-700">Session Time</label>
-                      <Select value={selectedSession} onValueChange={(value: SessionOption) => setSelectedSession(value)}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {SESSION_OPTIONS.map((option) => (
-                            <SelectItem key={option.key} value={option.key}>
-                              {option.value}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={handleStartSession}
-                        className="flex-1"
-                        disabled={savingAttendance}
-                      >
-                        {savingAttendance ? 'Starting...' : 'Start Session'}
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              <Button
+                size="lg"
+                glow
+                className="px-6 md:px-8 py-2 md:py-4 text-sm md:text-base"
+                onClick={() => setIsDialogOpen(true)}
+              >
+                <CalendarIcon className="w-4 h-4 md:w-5 md:h-5 mr-2" />
+                Start Attendance Session
+              </Button>
             </Card>
 
             {/* Previous Sessions */}
