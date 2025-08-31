@@ -224,7 +224,6 @@ export default function ReportsPage() {
                 mode="single"
                 selected={selectedMonth}
                 onSelect={(date) => date && setSelectedMonth(date)}
-                disabled={(date) => date > new Date()}
                 className="rounded-md border border-cyber-gray-200"
               />
             </div>
