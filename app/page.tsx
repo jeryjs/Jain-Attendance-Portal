@@ -71,7 +71,7 @@ export default function Home() {
 
               <h1 className="text-3xl md:text-5xl lg:text-7xl font-bold mb-3 md:mb-6">
                 <span className="bg-gradient-to-r from-cyber-gray-900 via-cyber-gray-700 to-cyber-gray-900 bg-clip-text text-transparent">
-                  Jain University
+                  FET - Jain University
                 </span>
                 <br />
                 <span className="bg-gradient-to-r from-cyber-yellow to-cyber-yellow-dark bg-clip-text text-transparent animate-pulse">
@@ -80,7 +80,7 @@ export default function Home() {
               </h1>
 
               <p className="text-sm md:text-xl lg:text-2xl text-cyber-gray-600 mb-4 md:mb-8 max-w-3xl mx-auto leading-relaxed px-2">
-                Experience the future of attendance management with our sleek, secure, and intelligent system designed exclusively for FET students and faculty.
+                Experience the future of attendance management with our sleek, secure, and intelligent system designed exclusively for FET.
               </p>
 
               <div className="flex flex-col gap-2 md:gap-4 justify-center items-center">
@@ -106,7 +106,7 @@ export default function Home() {
                   <Shield className="w-6 h-6 md:w-8 md:h-8 text-cyber-gray-900" />
                 </div>
                 <h3 className="text-lg md:text-xl font-bold mb-2 text-cyber-gray-900">Ultra Secure</h3>
-                <p className="text-xs md:text-sm text-cyber-gray-600">Bank-level security with domain-restricted authentication and encrypted data transmission.</p>
+                {/* <p className="text-xs md:text-sm text-cyber-gray-600">Bank-level security with domain-restricted authentication and encrypted data transmission.</p> */}
               </Card>
 
               <Card variant="cyber" className="text-center p-4 md:p-6 group">
@@ -114,7 +114,7 @@ export default function Home() {
                   <Zap className="w-6 h-6 md:w-8 md:h-8 text-cyber-gray-900" />
                 </div>
                 <h3 className="text-lg md:text-xl font-bold mb-2 text-cyber-gray-900">Lightning Fast</h3>
-                <p className="text-xs md:text-sm text-cyber-gray-600">Optimized for speed with instant attendance marking and real-time synchronization.</p>
+                {/* <p className="text-xs md:text-sm text-cyber-gray-600">Optimized for speed with instant attendance marking and real-time synchronization.</p> */}
               </Card>
 
               <Card variant="cyber" className="text-center p-4 md:p-6 group">
@@ -122,31 +122,9 @@ export default function Home() {
                   <BarChart3 className="w-6 h-6 md:w-8 md:h-8 text-cyber-gray-900" />
                 </div>
                 <h3 className="text-lg md:text-xl font-bold mb-2 text-cyber-gray-900">Smart Analytics</h3>
-                <p className="text-xs md:text-sm text-cyber-gray-600">Comprehensive reports and insights to track attendance patterns and performance.</p>
+                {/* <p className="text-xs md:text-sm text-cyber-gray-600">Comprehensive reports and insights to track attendance patterns and performance.</p> */}
               </Card>
             </div>
-
-            {/* Stats Section */}
-            <Card variant="glass" className="max-w-4xl mx-auto p-4 md:p-6">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
-                <div className="text-center">
-                  <div className="text-xl md:text-3xl font-bold text-cyber-gray-900 mb-1 md:mb-2">99.9%</div>
-                  <div className="text-xs md:text-sm text-cyber-gray-600">Uptime</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xl md:text-3xl font-bold text-cyber-gray-900 mb-1 md:mb-2">10ms</div>
-                  <div className="text-xs md:text-sm text-cyber-gray-600">Response Time</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xl md:text-3xl font-bold text-cyber-gray-900 mb-1 md:mb-2">5000+</div>
-                  <div className="text-xs md:text-sm text-cyber-gray-600">Students</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xl md:text-3xl font-bold text-cyber-gray-900 mb-1 md:mb-2">24/7</div>
-                  <div className="text-xs md:text-sm text-cyber-gray-600">Support</div>
-                </div>
-              </div>
-            </Card>
           </div>
         </div>
       </div>
@@ -189,7 +167,7 @@ export default function Home() {
             </h2>
 
             <p className="text-sm md:text-lg mb-4 md:mb-6 text-cyber-gray-700 leading-relaxed">
-              Welcome to Jain University's cutting-edge attendance portal! This sleek system is designed exclusively for our amazing faculty members.
+              Welcome to FET, Jain University's attendance portal! This sleek system is designed exclusively for our amazing faculty members.
             </p>
 
             <div className="space-y-3 md:space-y-4 mb-4 md:mb-6">
@@ -206,10 +184,6 @@ export default function Home() {
                 <span className="text-xs md:text-sm">Smart analytics & insights</span>
               </div>
             </div>
-
-            <p className="text-xs md:text-sm text-cyber-gray-500 mb-4 md:mb-6">
-              Students can access their attendance records through the university's main portal or dedicated student app.
-            </p>
 
             <Button
               onClick={() => window.location.href = 'https://jainuniversity.ac.in'}
