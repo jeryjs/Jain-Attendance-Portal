@@ -821,12 +821,6 @@ export default function SectionAttendancePage() {
                         date={selectedDate}
                         onDateChange={(date) => date && setSelectedDate(date)}
                         placeholder="Select session date"
-                        disabledDates={(date) => {
-                          const today = new Date();
-                          const twoWeeksAgo = new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000);
-                          const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
-                          return date < twoWeeksAgo || date > tomorrow || date.getDay() === 0;
-                        }}
                       />
                     </div>
                     <div>

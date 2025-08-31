@@ -224,7 +224,6 @@ export default function ReportsPage() {
                 date={selectedMonth}
                 onDateChange={(date) => date && setSelectedMonth(date)}
                 placeholder="Select month for report"
-                disabledDates={() => false}
               />
             </div>
           </Card>

@@ -57,8 +57,11 @@ export function DatePicker({
           disabled={disabled}
           className={cn(
             "flex h-10 w-full rounded-md border border-cyber-gray-200 bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-cyber-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyber-yellow focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pr-10",
+            isOpen && "ring-2 ring-cyber-yellow ring-offset-2 border-cyber-yellow",
             className
           )}
+          // Prevent text selection on focus
+          onFocus={(e) => { e.target.blur() }}
           onClick={() => setIsOpen(!isOpen)}
         />
         <CalendarIcon
@@ -73,13 +76,7 @@ export function DatePicker({
             mode="single"
             selected={date}
             onSelect={handleDateSelect}
-            initialFocus
-            disabled={disabledDates || ((date) => {
-              const today = new Date();
-              const twoWeeksAgo = new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000);
-              const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
-              return date < twoWeeksAgo || date > tomorrow || date.getDay() === 0;
-            })}
+            disabled={disabledDates || ((date) => date < new Date('2025-08-24') || date > new Date())}
           />
         </div>
       )}
