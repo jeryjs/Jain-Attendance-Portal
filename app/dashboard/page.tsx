@@ -152,25 +152,6 @@ export default function DashboardPage() {
             <p className="text-xs md:text-sm text-cyber-gray-600">Analytics & insights</p>
           </Card>
 
-          <Card variant="cyber" className="text-center group cursor-pointer p-3 md:p-6" onClick={() => router.push('/attendance')}>
-            <div className="w-8 h-8 md:w-12 md:h-12 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-xl flex items-center justify-center mx-auto mb-2 md:mb-3 group-hover:scale-110 transition-transform duration-300">
-              <Clock className="w-4 h-4 md:w-6 md:h-6 text-cyber-gray-900" />
-            </div>
-            <h3 className="text-sm md:text-lg font-bold text-cyber-gray-900 mb-1">Continue Session</h3>
-            <p className="text-xs md:text-sm text-cyber-gray-600">Resume pending work</p>
-          </Card>
-
-          <Card variant="cyber" className="text-center group cursor-pointer p-3 md:p-6" onClick={() => router.push('/reports')}>
-            <div className="w-8 h-8 md:w-12 md:h-12 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-xl flex items-center justify-center mx-auto mb-2 md:mb-3 group-hover:scale-110 transition-transform duration-300">
-              <Award className="w-4 h-4 md:w-6 md:h-6 text-cyber-gray-900" />
-            </div>
-            <h3 className="text-sm md:text-lg font-bold text-cyber-gray-900 mb-1">Performance</h3>
-            <p className="text-xs md:text-sm text-cyber-gray-600">Track your metrics</p>
-          </Card>
-        </div>
-
-        {/* Stats Overview */}
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-6 mb-4 md:mb-12">
           <Card variant="cyber" className="text-center p-3 md:p-6">
             <div className="w-6 h-6 md:w-10 md:h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center mx-auto mb-1 md:mb-2">
               <Calendar className="w-3 h-3 md:w-5 md:h-5 text-white" />
@@ -179,28 +160,13 @@ export default function DashboardPage() {
             <div className="text-xs text-cyber-gray-600">Total Sessions</div>
           </Card>
 
-          <Card variant="cyber" className="text-center p-3 md:p-6">
-            <div className="w-6 h-6 md:w-10 md:h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center mx-auto mb-1 md:mb-2">
-              <Users className="w-3 h-3 md:w-5 md:h-5 text-white" />
-            </div>
-            <div className="text-lg md:text-2xl font-bold text-cyber-gray-900 mb-1">{stats.totalStudents}</div>
-            <div className="text-xs text-cyber-gray-600">Total Students</div>
-          </Card>
-
-          <Card variant="cyber" className="text-center p-3 md:p-6">
-            <div className="w-6 h-6 md:w-10 md:h-10 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-lg flex items-center justify-center mx-auto mb-1 md:mb-2">
-              <TrendingUp className="w-3 h-3 md:w-5 md:h-5 text-cyber-gray-900" />
-            </div>
-            <div className="text-lg md:text-2xl font-bold text-cyber-gray-900 mb-1">{stats.averageAttendance}%</div>
-            <div className="text-xs text-cyber-gray-600">Avg Attendance</div>
-          </Card>
 
           <Card variant="cyber" className="text-center p-3 md:p-6">
             <div className="w-6 h-6 md:w-10 md:h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center mx-auto mb-1 md:mb-2">
-              <Target className="w-3 h-3 md:w-5 md:h-5 text-white" />
+              <TrendingUp className="w-3 h-3 md:w-5 md:h-5 text-white" />
             </div>
-            <div className="text-lg md:text-2xl font-bold text-cyber-gray-900 mb-1">{stats.weeklyStats.total}</div>
-            <div className="text-xs text-cyber-gray-600">This Week</div>
+            <div className="text-lg md:text-2xl font-bold text-cyber-gray-900 mb-1">{stats.averageAttendance}%</div>
+            <div className="text-xs text-cyber-gray-600">Avg Attendance</div>
           </Card>
         </div>
 
@@ -217,10 +183,10 @@ export default function DashboardPage() {
                 {stats.recentSessions.slice(0, 3).map((session: any) => {
                   const sessionDate = format(session.createdAt.toDate(), 'yyyy-MM-dd');
                   const sessionUrl = `/attendance/${encodeURIComponent(session.section)}?date=${sessionDate}&time=${session.session}`;
-                  
+
                   return (
-                    <div 
-                      key={session.id} 
+                    <div
+                      key={session.id}
                       className="flex items-center justify-between p-2 md:p-4 bg-cyber-gray-50 rounded-xl hover:bg-cyber-gray-100 cursor-pointer transition-colors"
                       onClick={() => router.push(sessionUrl)}
                     >
