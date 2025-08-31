@@ -61,7 +61,7 @@ export default function SectionAttendancePage() {
   const [existingSession, setExistingSession] = useState<any>(null);
   const [originalAttendance, setOriginalAttendance] = useState<Record<string, boolean>>({});
   const [sectionSessions, setSectionSessions] = useState<any[]>([]);
-  const [sortConfig, setSortConfig] = useState<{ field: 'name' | 'usn' | null; direction: 'asc' | 'desc' }>({ field: null, direction: 'asc' });
+  const [sortConfig, setSortConfig] = useState<{ field: 'name' | 'usn' | 'attendance' | null; direction: 'asc' | 'desc' }>({ field: null, direction: 'asc' });
 
   // Date validation - restrict to reasonable range
   const isValidDate = (dateStr: string) => {
@@ -169,8 +169,25 @@ export default function SectionAttendancePage() {
     // Sort the filtered results
     if (sortConfig.field) {
       filtered = [...filtered].sort((a, b) => {
-        const aValue = sortConfig.field === 'name' ? a.name.toLowerCase() : a.usn.toLowerCase();
-        const bValue = sortConfig.field === 'name' ? b.name.toLowerCase() : b.usn.toLowerCase();
+        let aValue: string | number | boolean;
+        let bValue: string | number | boolean;
+
+        switch (sortConfig.field) {
+          case 'name':
+            aValue = a.name.toLowerCase();
+            bValue = b.name.toLowerCase();
+            break;
+          case 'usn':
+            aValue = a.usn.toLowerCase();
+            bValue = b.usn.toLowerCase();
+            break;
+          case 'attendance':
+            aValue = attendance[a.usn] ? 1 : 0;
+            bValue = attendance[b.usn] ? 1 : 0;
+            break;
+          default:
+            return 0;
+        }
 
         if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
         if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
@@ -559,9 +576,7 @@ export default function SectionAttendancePage() {
                         data-sort-button
                         onClick={() => {
                           const dropdown = document.getElementById('sort-dropdown');
-                          if (dropdown) {
-                            dropdown.classList.toggle('hidden');
-                          }
+                          if (dropdown) dropdown.classList.toggle('hidden');
                         }}
                         className="px-3"
                       >
@@ -614,6 +629,23 @@ export default function SectionAttendancePage() {
                           >
                             <span>USN</span>
                             {sortConfig.field === 'usn' && (
+                              sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                            )}
+                          </button>
+
+                          {/* Attendance sorting */}
+                          <button
+                            onClick={() => {
+                              setSortConfig(prev => ({
+                                field: 'attendance',
+                                direction: prev.field === 'attendance' && prev.direction === 'asc' ? 'desc' : 'asc'
+                              }));
+                              document.getElementById('sort-dropdown')?.classList.add('hidden');
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-cyber-gray-50 rounded-md flex items-center justify-between"
+                          >
+                            <span>Attendance</span>
+                            {sortConfig.field === 'attendance' && (
                               sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
                             )}
                           </button>
