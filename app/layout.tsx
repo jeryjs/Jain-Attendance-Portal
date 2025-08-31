@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FET ClassKeeper - Jain University Attendance Portal",
+  title: "FET Attendance - Jain University Attendance Portal",
   description: "Secure attendance management system for Jain University",
 };
 

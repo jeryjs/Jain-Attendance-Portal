@@ -75,12 +75,12 @@ export default function SidebarNavigation() {
         )}>
           {!isCollapsed && (
             <div className="flex items-center space-x-3 flex-1">
-              <div className="w-8 h-8 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-lg flex items-center justify-center">
-                <GraduationCap className="w-5 h-5 text-cyber-gray-900" />
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark flex items-center justify-center overflow-hidden">
+                <img src="/JGI.webp" alt="JGI Logo" className="w-full h-full object-cover" />
               </div>
               <div className="flex-1 min-w-0">
-                <h1 className="text-sm font-bold bg-gradient-to-r from-cyber-yellow to-cyber-yellow-dark bg-clip-text text-transparent truncate">
-                  FET ClassKeeper
+                <h1 className="text-xl font-bold text-white" style={{ textShadow: '0 1px 3px #001030, 0 1px 2px #00205b' }}>
+                  FET Attendance
                 </h1>
                 <p className="text-xs text-cyber-gray-600 truncate">Attendance Portal</p>
               </div>

@@ -69,15 +69,15 @@ export default function Navigation() {
       <SidebarNavigation />
 
       {/* Mobile Top Bar */}
-      <nav className="lg:hidden sticky fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-cyber-gray-200 shadow-lg">
+      <nav className="lg:hidden sticky top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-cyber-gray-200 shadow-lg">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-lg flex items-center justify-center">
-              <GraduationCap className="w-5 h-5 text-cyber-gray-900" />
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark flex items-center justify-center overflow-hidden">
+              <img src="/JGI.webp" alt="JGI Logo" className="w-full h-full object-cover" />
             </div>
             <div>
-              <h1 className="text-sm font-bold bg-gradient-to-r from-cyber-yellow to-cyber-yellow-dark bg-clip-text text-transparent">
-                FET ClassKeeper
+              <h1 className="text-xl font-bold text-white" style={{ textShadow: '0 2px 8px #001030, 0 1px 4px #00205b' }}>
+                FET Attendance
               </h1>
             </div>
           </div>
@@ -100,11 +100,11 @@ export default function Navigation() {
             <div className="p-6">
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-xl flex items-center justify-center">
-                    <GraduationCap className="w-6 h-6 text-cyber-gray-900" />
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark flex items-center justify-center overflow-hidden">
+                    <img src="/JGI.webp" alt="JGI Logo" className="w-full h-full object-cover" />
                   </div>
-                  <span className="text-xl font-bold bg-gradient-to-r from-cyber-yellow to-cyber-yellow-dark bg-clip-text text-transparent">
-                    FET ClassKeeper
+                  <span className="text-xl font-bold text-white" style={{ textShadow: '0 2px 8px #001030, 0 1px 4px #00205b' }}>
+                    FET Attendance
                   </span>
                 </div>
                 <Button
