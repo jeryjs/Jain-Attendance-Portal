@@ -924,7 +924,7 @@ export default function SectionAttendancePage() {
                 <label className="text-sm font-medium text-cyber-gray-700 mb-2 block">Date</label>
                 <DatePicker
                   date={selectedDate}
-                  onDateChange={(date) => date && setSelectedDate(date)}
+                  onDateChange={(date) => date && setSelectedDate(date as Date)}
                   placeholder="Select session date"
                 />
               </div>

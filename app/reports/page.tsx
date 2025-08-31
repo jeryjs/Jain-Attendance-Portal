@@ -222,7 +222,7 @@ export default function ReportsPage() {
               <label className="text-xs md:text-sm font-medium text-cyber-gray-700">Select Month</label>
               <DatePicker
                 date={selectedMonth}
-                onDateChange={(date) => date && setSelectedMonth(date)}
+                onDateChange={(date) => date && setSelectedMonth(date as Date)}
                 placeholder="Select month for report"
               />
             </div>

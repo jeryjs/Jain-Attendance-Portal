@@ -1,12 +1,14 @@
-import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import * as React from "react";
+import { DayPicker, Mode, DateRange } from "react-day-picker";
+import "react-day-picker/style.css";
 
 interface DatePickerProps {
-  date?: Date;
-  onDateChange?: (date: Date | undefined) => void;
+  date?: Date | Date[] | DateRange;
+  onDateChange?: (date: Date | Date[] | DateRange | undefined) => void;
+  mode?: Mode;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
@@ -16,6 +18,7 @@ interface DatePickerProps {
 export function DatePicker({
   date,
   onDateChange,
+  mode = "single",
   placeholder = "Pick a date",
   disabled = false,
   className,
@@ -23,9 +26,20 @@ export function DatePicker({
 }: DatePickerProps) {
   const [isOpen, setIsOpen] = React.useState(false);
 
-  const handleDateSelect = (selectedDate: Date | undefined) => {
-    onDateChange?.(selectedDate);
+  const handleDateSelect = (selected: Date | Date[] | DateRange | undefined) => {
+    onDateChange?.(selected);
     setIsOpen(false);
+  };
+
+  const getDisplayValue = () => {
+    if (!date) return "";
+    if (mode === "single") return format(date as Date, "PPP");
+    if (mode === "multiple") return `${(date as Date[]).length} dates selected`;
+    if (mode === "range") {
+      const range = date as DateRange;
+      return `${range.from ? format(range.from, "PPP") : ""} - ${range.to ? format(range.to, "PPP") : "Select end date"}`;
+    }
+    return "";
   };
 
   // Close dropdown when clicking outside
@@ -52,7 +66,7 @@ export function DatePicker({
         <input
           type="text"
           readOnly
-          value={date ? format(date, "PPP") : ""}
+          value={getDisplayValue()}
           placeholder={placeholder}
           disabled={disabled}
           className={cn(
@@ -72,12 +86,42 @@ export function DatePicker({
 
       {isOpen && (
         <div className="absolute top-full left-0 z-50 mt-1 bg-white border border-cyber-gray-200 rounded-lg shadow-xl min-w-[280px] sm:min-w-[320px]">
-          <Calendar
-            mode="single"
-            selected={date}
-            onSelect={handleDateSelect}
-            disabled={disabledDates || ((date) => date < new Date('2025-08-24') || date > new Date())}
-          />
+          {mode === "single" && (
+            <DayPicker
+              mode="single"
+              navLayout="around"
+              showOutsideDays={false}
+              className={cn("p-3", className)}
+              selected={date as Date | undefined}
+              onSelect={(selected) => handleDateSelect(selected)}
+              disabled={disabledDates || ((date) => date < new Date('2025-08-24') || date > new Date())}
+              required={false}
+            />
+          )}
+          {mode === "multiple" && (
+            <DayPicker
+              mode="multiple"
+              navLayout="around"
+              showOutsideDays={false}
+              className={cn("p-3", className)}
+              selected={date as Date[]}
+              onSelect={(selected) => handleDateSelect(selected)}
+              disabled={disabledDates || ((date) => date < new Date('2025-08-24') || date > new Date())}
+              required={false}
+            />
+          )}
+          {mode === "range" && (
+            <DayPicker
+              mode="range"
+              navLayout="around"
+              showOutsideDays={false}
+              className={cn("p-3", className)}
+              selected={date as DateRange}
+              onSelect={(selected) => handleDateSelect(selected)}
+              disabled={disabledDates || ((date) => date < new Date('2025-08-24') || date > new Date())}
+              required={false}
+            />
+          )}
         </div>
       )}
     </div>
