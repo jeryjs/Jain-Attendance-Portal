@@ -1,42 +1,40 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
+import { FirebaseService } from '@/lib/firebase-service';
+import { SESSION_OPTIONS, SessionOption, Student } from '@/lib/types';
+import { format } from 'date-fns';
 import {
+  ArrowDown,
   ArrowLeft,
+  ArrowUp,
+  ArrowUpDown,
   Calendar as CalendarIcon,
-  Clock,
-  Users,
+  Check,
   CheckCircle,
-  XCircle,
+  Clock,
+  Edit,
   Grid3X3,
   List,
+  Save,
   Search,
-  Check,
-  X,
   Sparkles,
   Target,
-  BookOpen,
   UserCheck,
-  Save,
-  AlertCircle,
-  User,
-  Edit,
-  Plus,
-  RefreshCw
+  Users,
+  X,
+  XCircle
 } from 'lucide-react';
-import { useToast } from '@/contexts/ToastContext';
-import { format } from 'date-fns';
-import { FirebaseService } from '@/lib/firebase-service';
-import { Student, SessionOption, SESSION_OPTIONS } from '@/lib/types';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 export default function SectionAttendancePage() {
   const params = useParams();
@@ -63,6 +61,7 @@ export default function SectionAttendancePage() {
   const [existingSession, setExistingSession] = useState<any>(null);
   const [originalAttendance, setOriginalAttendance] = useState<Record<string, boolean>>({});
   const [sectionSessions, setSectionSessions] = useState<any[]>([]);
+  const [sortConfig, setSortConfig] = useState<{ field: 'name' | 'usn' | null; direction: 'asc' | 'desc' }>({ field: null, direction: 'asc' });
 
   // Date validation - restrict to reasonable range
   const isValidDate = (dateStr: string) => {
@@ -157,17 +156,44 @@ export default function SectionAttendancePage() {
   };
 
   useEffect(() => {
-    // Filter students based on search query
+    let filtered = students;
+
+    // Filter by search query
     if (searchQuery.length >= 1) {
-      const filtered = students.filter(student =>
+      filtered = students.filter(student =>
         student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         student.usn.toLowerCase().includes(searchQuery.toLowerCase())
       );
-      setFilteredStudents(filtered);
-    } else {
-      setFilteredStudents(students);
     }
-  }, [searchQuery, students]);
+
+    // Sort the filtered results
+    if (sortConfig.field) {
+      filtered = [...filtered].sort((a, b) => {
+        const aValue = sortConfig.field === 'name' ? a.name.toLowerCase() : a.usn.toLowerCase();
+        const bValue = sortConfig.field === 'name' ? b.name.toLowerCase() : b.usn.toLowerCase();
+
+        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    setFilteredStudents(filtered);
+  }, [searchQuery, students, sortConfig]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const dropdown = document.getElementById('sort-dropdown');
+      const button = event.target as Element;
+      if (dropdown && !dropdown.contains(button) && !button.closest('[data-sort-button]')) {
+        dropdown.classList.add('hidden');
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Navigation warning for unsaved changes
   useEffect(() => {
@@ -513,15 +539,103 @@ export default function SectionAttendancePage() {
 
                 {/* Search Bar */}
                 <div className="mb-3 md:mb-6 px-3 md:px-6">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-cyber-gray-400 w-4 h-4" />
-                    <Input
-                      type="text"
-                      placeholder="Search by name or USN..."
-                      value={searchQuery}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
-                      className="pl-10"
-                    />
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-cyber-gray-400 w-4 h-4" />
+                      <Input
+                        type="text"
+                        placeholder="Search by name or USN..."
+                        value={searchQuery}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+
+                    {/* Sort Button with Dropdown */}
+                    <div className="relative">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        data-sort-button
+                        onClick={() => {
+                          const dropdown = document.getElementById('sort-dropdown');
+                          if (dropdown) {
+                            dropdown.classList.toggle('hidden');
+                          }
+                        }}
+                        className="px-3"
+                      >
+                        {sortConfig.field ? (
+                          sortConfig.field === 'name' ? (
+                            sortConfig.direction === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                          ) : (
+                            sortConfig.direction === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                          )
+                        ) : (
+                          <ArrowUpDown className="w-4 h-4" />
+                        )}
+                      </Button>
+
+                      {/* Sort Dropdown */}
+                      <div
+                        id="sort-dropdown"
+                        className="absolute right-0 top-full mt-1 w-48 bg-white border border-cyber-gray-200 rounded-lg shadow-lg z-10 hidden"
+                      >
+                        <div className="p-2">
+                          <div className="text-xs font-medium text-cyber-gray-600 mb-2 px-2">Sort by</div>
+
+                          {/* Name sorting */}
+                          <button
+                            onClick={() => {
+                              setSortConfig(prev => ({
+                                field: 'name',
+                                direction: prev.field === 'name' && prev.direction === 'asc' ? 'desc' : 'asc'
+                              }));
+                              document.getElementById('sort-dropdown')?.classList.add('hidden');
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-cyber-gray-50 rounded-md flex items-center justify-between"
+                          >
+                            <span>Name</span>
+                            {sortConfig.field === 'name' && (
+                              sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                            )}
+                          </button>
+
+                          {/* USN sorting */}
+                          <button
+                            onClick={() => {
+                              setSortConfig(prev => ({
+                                field: 'usn',
+                                direction: prev.field === 'usn' && prev.direction === 'asc' ? 'desc' : 'asc'
+                              }));
+                              document.getElementById('sort-dropdown')?.classList.add('hidden');
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-cyber-gray-50 rounded-md flex items-center justify-between"
+                          >
+                            <span>USN</span>
+                            {sortConfig.field === 'usn' && (
+                              sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                            )}
+                          </button>
+
+                          {/* Clear sorting */}
+                          {sortConfig.field && (
+                            <>
+                              <div className="border-t border-cyber-gray-100 my-1"></div>
+                              <button
+                                onClick={() => {
+                                  setSortConfig({ field: null, direction: 'asc' });
+                                  document.getElementById('sort-dropdown')?.classList.add('hidden');
+                                }}
+                                className="w-full text-left px-3 py-2 text-sm hover:bg-cyber-gray-50 rounded-md text-cyber-gray-600"
+                              >
+                                Clear sorting
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
