@@ -76,7 +76,7 @@ export default function Navigation() {
               <img src="/JGI.webp" alt="JGI Logo" className="w-full h-full object-cover" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white" style={{ textShadow: '0 2px 8px #001030, 0 1px 4px #00205b' }}>
+              <h1 className="text-xl font-bold text-cyber-gray-900 font-cyber">
                 FET Attendance
               </h1>
             </div>
@@ -103,7 +103,7 @@ export default function Navigation() {
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark flex items-center justify-center overflow-hidden">
                     <img src="/JGI.webp" alt="JGI Logo" className="w-full h-full object-cover" />
                   </div>
-                  <span className="text-xl font-bold text-white" style={{ textShadow: '0 2px 8px #001030, 0 1px 4px #00205b' }}>
+                  <span className="text-xl font-bold text-cyber-gray-900 font-cyber">
                     FET Attendance
                   </span>
                 </div>

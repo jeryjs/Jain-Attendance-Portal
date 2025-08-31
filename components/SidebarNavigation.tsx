@@ -79,10 +79,10 @@ export default function SidebarNavigation() {
                 <img src="/JGI.webp" alt="JGI Logo" className="w-full h-full object-cover" />
               </div>
               <div className="flex-1 min-w-0">
-                <h1 className="text-xl font-bold text-white" style={{ textShadow: '0 1px 3px #001030, 0 1px 2px #00205b' }}>
+                <h1 className="text-xl font-bold text-cyber-gray-900 font-cyber">
                   FET Attendance
                 </h1>
-                <p className="text-xs text-cyber-gray-600 truncate">Attendance Portal</p>
+                <p className="text-xs text-cyber-gray-600 truncate">JAIN Attendance Portal</p>
               </div>
             </div>
           )}
