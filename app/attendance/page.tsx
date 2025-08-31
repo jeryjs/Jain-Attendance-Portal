@@ -28,7 +28,9 @@ export default function AttendancePage() {
   const [programs] = useState<Program[]>(programsData.sort((a, b) => a.name.localeCompare(b.name)));
   const [hoveredSection, setHoveredSection] = useState<string | null>(null);
   const [showSearch, setShowSearch] = useState(false);
-  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
+  const [isDesktop, setIsDesktop] = useState(
+    typeof window !== "undefined" ? window.innerWidth >= 768 : false
+  );
 
   useEffect(() => {
     const handleResize = () => {
