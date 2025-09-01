@@ -33,7 +33,7 @@ interface TooltipProps {
   className?: string
 }
 
-const Tooltip = ({ content, children, side, sideOffset, delay = 10, className }: TooltipProps) => (
+const Tooltip = ({ content, children, side, sideOffset, delay = 100, className }: TooltipProps) => (
   <TooltipProvider>
     <TooltipPrimitive.Root delayDuration={delay}>
       <TooltipTrigger asChild>

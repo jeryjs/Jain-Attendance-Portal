@@ -21,7 +21,7 @@ import {
   type LucideIcon
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, memo } from 'react';
+import { useEffect, useState, memo, useMemo } from 'react';
 import PieChart from './PieChart';
 import SectionChart from './SectionChart';
 import { AdminStats } from './types';
@@ -74,13 +74,17 @@ export default function AdminReportsPage() {
   const [selectedSessions, setSelectedSessions] = useState<string[]>([]);
 
   // Handle session selection for filtering
-  const handleSessionSelect = (session: string) => {
-    setSelectedSessions(prev =>
-      prev.includes(session)
-        ? prev.filter(s => s !== session)
-        : [...prev, session]
-    );
-  };
+  const handleSessionSelect = useMemo(() => (session: string) => {
+    if (session === '') {
+      setSelectedSessions([]);
+    } else {
+      setSelectedSessions(prev =>
+        prev.includes(session)
+          ? prev.filter(s => s !== session)
+          : [...prev, session]
+      );
+    }
+  }, []);
 
   // alert that desktop view is recommended
   useEffect(() => {

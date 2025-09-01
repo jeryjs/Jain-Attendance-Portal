@@ -1,6 +1,7 @@
 import { Tooltip } from "@/components/ui/tooltip";
 import { SESSION_OPTIONS } from "@/lib/types";
 import { memo } from "react";
+import { X } from "lucide-react";
 
 interface PieChartData {
   name: string;
@@ -72,27 +73,41 @@ const PieChart = memo(({ data, selectedSessions, onSessionSelect }: {
       </div>
 
       {/* Compact Legend */}
-      <div className="justify-center gap-4 mt-4 grid grid-cols-2">
-        {data.map((item, index) => (
-          <Tooltip sideOffset={4} content={<>{SESSION_OPTIONS.find(opt => opt.key === item.name)?.value}<br /><i className="text-xs text-gray-400">{item.value} students ({item.count} sessions)</i></>} key={index}>
-            <div
-              className={`flex items-center gap-2 px-3 py-1 rounded-full cursor-pointer transition-all ${selectedSessions.includes(item.name)
-                ? 'bg-purple-100 border-2 border-purple-300'
-                : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
-                }`}
-              onClick={() => onSessionSelect(item.name)}
+      <div className="flex-1 ml-4">
+        {selectedSessions.length > 0 && (
+          <div className="flex justify-end mb-2">
+            <button
+              onClick={() => onSessionSelect('')}
+              className="flex items-center gap-1 px-2 py-1 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+              title="Clear all selections"
             >
+              <X className="w-3 h-3" />
+              Clear
+            </button>
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-2">
+          {data.map((item, index) => (
+            <Tooltip sideOffset={4} content={<>{SESSION_OPTIONS.find(opt => opt.key === item.name)?.value}<br /><i className="text-xs text-gray-400">{item.value} students ({item.count} sessions)</i></>} key={index}>
               <div
-                className="w-3 h-3 rounded-full flex-shrink-0"
-                style={{ backgroundColor: item.color }}
-              ></div>
-              <span className="text-xs font-medium text-gray-700">{item.name}</span>
-              <span className="text-xs font-semibold text-gray-900">
-                {Math.round((item.value / total) * 100)}%
-              </span>
-            </div>
-          </Tooltip>
-        ))}
+                className={`flex items-center gap-2 px-3 py-1 rounded-full cursor-pointer transition-all ${selectedSessions.includes(item.name)
+                  ? 'bg-purple-100 border-2 border-purple-300'
+                  : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
+                  }`}
+                onClick={() => onSessionSelect(item.name)}
+              >
+                <div
+                  className="w-3 h-3 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: item.color }}
+                ></div>
+                <span className="text-xs font-medium text-gray-700">{item.name}</span>
+                <span className="text-xs font-semibold text-gray-900">
+                  {Math.round((item.value / total) * 100)}%
+                </span>
+              </div>
+            </Tooltip>
+          ))}
+        </div>
       </div>
     </div>
   );
