@@ -109,6 +109,41 @@ const StatsCard = ({ title, value, icon: Icon, color, subtitle }: {
   </Card>
 );
 
+type AdminStats = {
+  sectionStats: Array<{
+    name: string;
+    value: number;
+    color: string;
+    totalSessions: number;
+    totalStudents: number;
+    totalPresent: number;
+    sessions: Array<{
+      session: string;
+      count: number;
+      present: number;
+      total: number;
+      attendance: number;
+    }>;
+  }>;
+  sessionStats: Array<{
+    name: string;
+    color: string;
+    count: number;
+  }>;
+  sessionPieData: Array<{
+    name: string;
+    value: number;
+    color: string;
+    count: number;
+  }>;
+  totalSessions: number;
+  totalStudents: number;
+  totalUniqueStudents: number;
+  averageAttendance: number;
+  recentSessions: any[];
+  uniqueSections: number;
+};
+
 export default function AdminReportsPage() {
   const { user, loading, isAdmin } = useAuth();
   const { addToast } = useToast();
@@ -123,7 +158,7 @@ export default function AdminReportsPage() {
   const [refetching, setRefetching] = useState(false);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
   const [sections, setSections] = useState<string[]>([]);
-  const [adminStats, setAdminStats] = useState<any>(null);
+  const [adminStats, setAdminStats] = useState<AdminStats | null>(null);
   const [selectedSessions, setSelectedSessions] = useState<string[]>([]);
 
   // Handle session selection for filtering

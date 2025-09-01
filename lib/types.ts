@@ -73,7 +73,7 @@ export const SECTION_MAPPINGS: { [key: string]: string } = {
   AIDD: 'AI-Driven DevOps',
   AIDE: 'Artificial Intelligence and Data Engineering',
   AIML: 'Artificial Intelligence and Machine Learning',
-  BCT: 'Blockchain Technology in association',
+  BCT: 'Blockchain Technology',
   CTIS: 'Cloud Technology and Information Security',
   CTMA: 'Mobile Applications and Cloud Technology',
   CPS: 'Cyber Physical Systems',
@@ -83,8 +83,8 @@ export const SECTION_MAPPINGS: { [key: string]: string } = {
   CSE: 'Computer Science and Engineering',
   AI: 'Artificial Intelligence',
   CyS: 'Cybersecurity',
-  DS: 'Data Science in association',
-  IOT: 'Internet of Things in association',
+  DS: 'Data Science',
+  IOT: 'Internet of Things',
   ISE: 'Information Science and Engineering'
 };
 

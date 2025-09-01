@@ -3,10 +3,14 @@ import { type ClassValue, clsx } from "clsx";
 import { eachDayOfInterval, format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 import XLSX from "xlsx-js-style";
-import { SESSION_OPTIONS } from "./types";
+import { SECTION_MAPPINGS, SESSION_OPTIONS } from "./types";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
+}
+
+export const getProgramName = (section: string) => {
+  return Object.entries(SECTION_MAPPINGS).find(([key]) => section.startsWith(key.replace('-', ' ')))?.[1]
 }
 
 export const getReportsRoute = () => {

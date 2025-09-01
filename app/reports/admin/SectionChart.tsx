@@ -1,5 +1,7 @@
 import { Card } from "@/components/ui/card";
+import { Tooltip } from "@/components/ui/tooltip";
 import { SESSION_OPTIONS } from "@/lib/types";
+import { getProgramName } from "@/lib/utils";
 
 const SectionChart = ({ data, title, sessionStats }: {
   data: Array<{ name: string; value: number; color: string; sessions: any[] }>,
@@ -110,38 +112,42 @@ const SectionChart = ({ data, title, sessionStats }: {
           return (
             <div key={index} className="space-y-2">
               <div className="flex items-center gap-3">
-                <div className="min-w-0 flex-shrink-0 w-20">
-                  <span className="text-sm font-medium text-cyber-gray-700">
-                    {item.name} <span className="text-cyber-gray-400 font-normal">({Math.max(...item.sessions.map(s => s.total), 0)})</span>
-                  </span>
-                </div>
+                <Tooltip content={getProgramName(item.name) || item.name} side="right" delay={10}>
+                  <div className="min-w-0 flex-shrink-0 w-20">
+                    <span className="text-sm font-medium text-cyber-gray-700">
+                      {item.name.replace('CSE P', 'P').replace('GEN AI', 'GenAI').replace('CYBER SECURITY', 'CS')} <span className="text-cyber-gray-400 font-normal">({Math.max(...item.sessions.map(s => s.total), 0)})</span>
+                    </span>
+                  </div>
+                </Tooltip>
                 <div className="flex-1 min-w-0">
                   <div className="relative w-full h-6 bg-[#faebc5] rounded-full overflow-hidden">
                     <div className="flex h-full">
                       {layout.map((sessionLayout, idx) => {
+                        const sessionLabel = SESSION_OPTIONS.find(opt => opt.key === sessionLayout.session)?.value || sessionLayout.session;
                         const sessionWidth = (sessionLayout.width / totalWidth) * 100;
                         const fillPercentage = sessionLayout.attendance;
 
                         return (
-                          <div key={idx} className="relative flex" style={{ width: `${sessionWidth}%` }}>
-                            <div
-                              className="h-full flex items-center justify-center text-xs font-medium text-white cursor-pointer hover:opacity-80 transition-opacity"
-                              style={{
-                                width: `${fillPercentage}%`,
-                                backgroundColor: sessionLayout.color
-                              }}
-                              title={`${sessionLayout.session}: ${sessionLayout.attendance}% (${sessionLayout.present}/${sessionLayout.total})`}
-                            >
-                              {fillPercentage > 15 ? `${sessionLayout.attendance}%` : ''}
+                          <Tooltip delay={100} sideOffset={4} content={<>{sessionLabel}:<br />{sessionLayout.attendance}% ({sessionLayout.present}/{sessionLayout.total})</>}>
+                            <div key={idx} className="relative flex" style={{ width: `${sessionWidth}%` }}>
+                              <div
+                                className="h-full flex items-center justify-center text-xs font-medium text-white cursor-pointer hover:opacity-80 transition-opacity"
+                                style={{
+                                  width: `${fillPercentage}%`,
+                                  backgroundColor: sessionLayout.color
+                                }}
+                              >
+                                {fillPercentage > 15 ? `${sessionLayout.attendance}%` : ''}
+                              </div>
+                              <div
+                                className="h-full bg-transparent"
+                                style={{
+                                  width: `${100 - fillPercentage}%`,
+                                  borderRight: idx < layout.length - 1 ? '1px solid rgba(255,255,255,0.3)' : 'none'
+                                }}
+                              />
                             </div>
-                            <div
-                              className="h-full bg-transparent"
-                              style={{
-                                width: `${100 - fillPercentage}%`,
-                                borderRight: idx < layout.length - 1 ? '1px solid rgba(255,255,255,0.3)' : 'none'
-                              }}
-                            />
-                          </div>
+                          </Tooltip>
                         );
                       })}
                     </div>
