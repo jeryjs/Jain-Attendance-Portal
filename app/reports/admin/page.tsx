@@ -92,7 +92,9 @@ export default function AdminReportsPage() {
 
         // Get all sessions and students
         const [sessions, students] = await Promise.all([
-          FirebaseService.getAdminAttendanceSessions(false),
+          FirebaseService.getAdminAttendanceSessions(false, {
+            dateRange: dateRange.from && dateRange.to ? dateRange : undefined
+          }),
           FirebaseService.getAdminStudents(false)
         ]);
 
@@ -138,7 +140,7 @@ export default function AdminReportsPage() {
     };
 
     loadAdminData();
-  }, [user?.uid, isAdmin, selectedSessions, addToast]);
+  }, [user?.uid, isAdmin, selectedSessions, dateRange, addToast]);
 
   // Force refetch data
   const handleRefetch = async () => {
@@ -171,20 +173,16 @@ export default function AdminReportsPage() {
   // Export admin data
   const handleExportToExcel = async () => {
     if (!user?.uid || !dateRange.from || !dateRange.to) return;
-
+    setExporting(true);
     try {
-      setExporting(true);
-
       const sessions = await FirebaseService.getAdminAttendanceSessions(false, {
         section: selectedSection === 'all' ? undefined : selectedSection,
-        dateRange: { from: dateRange.from, to: dateRange.to }
+        dateRange
       });
-
-      if (sessions.length === 0) {
+      if (!sessions.length) {
         addToast({ title: "No Data", description: "No attendance sessions found", variant: "default" });
         return;
       }
-
       const excelBlob = await exportToExcel({
         userId: user.uid,
         dateRange,
@@ -192,30 +190,19 @@ export default function AdminReportsPage() {
         sessions,
         getStudents: (section: string) => FirebaseService.getAdminStudents(false, section)
       });
-
-      // Create download link
-      const url = window.URL.createObjectURL(excelBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `Admin_Attendance_Report_${format(dateRange.from, 'MMM_yyyy')}.xlsx`;
+      const url = URL.createObjectURL(excelBlob);
+      const link = Object.assign(document.createElement('a'), {
+        href: url,
+        download: `Admin_Attendance_Report_${format(dateRange.from, 'MMM_yyyy')}.xlsx`
+      });
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-
-      addToast({
-        title: "Export Successful",
-        description: `Admin report exported successfully`,
-        variant: "success"
-      });
-
+      link.remove();
+      URL.revokeObjectURL(url);
+      addToast({ title: "Export Successful", description: "Admin report exported successfully", variant: "success" });
     } catch (error) {
       console.error('Error exporting report:', error);
-      addToast({
-        title: "Export Failed",
-        description: "Failed to export attendance report",
-        variant: "destructive"
-      });
+      addToast({ title: "Export Failed", description: "Failed to export attendance report", variant: "destructive" });
     } finally {
       setExporting(false);
     }
@@ -286,10 +273,10 @@ export default function AdminReportsPage() {
           </div>
         </div>
 
-        {/* Overview Stats */}
         {adminStats && (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {/* Overview Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <StatsCard
                 title="Total Students"
                 value={adminStats.totalStudents}
@@ -319,6 +306,23 @@ export default function AdminReportsPage() {
                 subtitle="Across all sections"
               />
             </div>
+
+            {/* Date Range Filter */}
+            <Card variant="cyber" className="p-6 mb-8 overflow-visible z-[1]">
+              <h3 className="text-lg font-semibold text-cyber-gray-900 mb-4">Filter by Date Range</h3>
+              <DatePicker
+                date={dateRange}
+                onDateChange={(range) => {
+                  if (range && 'from' in range && range.from && range.to) {
+                    setDateRange({ from: range.from, to: range.to });
+                  }
+                }}
+                disabledDates={date => date < new Date(2025, 7, 25) || date > new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)}
+                placeholder="Select date range"
+                mode="range"
+                className='z-40'
+              />
+            </Card>
 
             {/* Section-wise Analysis */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
@@ -379,19 +383,18 @@ export default function AdminReportsPage() {
             {/* Export Section */}
             <Card variant="cyber" className="p-6">
               <h3 className="text-lg font-semibold text-cyber-gray-900 mb-4">Export Data</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-cyber-gray-700 mb-2 block">Date Range</label>
-                  <DatePicker
-                    date={dateRange}
-                    onDateChange={(range) => {
-                      if (range && 'from' in range && range.from && range.to) {
-                        setDateRange({ from: range.from, to: range.to });
-                      }
-                    }}
-                    placeholder="Select date range"
-                    mode="range"
-                  />
+                  <label className="text-sm font-medium text-cyber-gray-700 mb-2 block">Current Date Range</label>
+                  <div className="p-3 bg-cyber-gray-50 rounded-lg">
+                    {dateRange.from && dateRange.to ? (
+                      <p className="text-sm text-cyber-gray-900">
+                        {format(dateRange.from, 'MMM dd, yyyy')} - {format(dateRange.to, 'MMM dd, yyyy')}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-cyber-gray-500">No date range selected</p>
+                    )}
+                  </div>
                 </div>
 
                 <div>
@@ -408,26 +411,26 @@ export default function AdminReportsPage() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
 
-                <div className="flex items-end">
-                  <Button
-                    onClick={handleExportToExcel}
-                    disabled={exporting}
-                    className="w-full bg-purple-600 hover:bg-purple-700 text-white"
-                  >
-                    {exporting ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
-                        Exporting...
-                      </>
-                    ) : (
-                      <>
-                        <FileSpreadsheet className="w-4 h-4 mr-2" />
-                        Export Excel
-                      </>
-                    )}
-                  </Button>
-                </div>
+              <div className="mt-4 flex justify-end">
+                <Button
+                  onClick={handleExportToExcel}
+                  disabled={exporting}
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                >
+                  {exporting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                      Exporting...
+                    </>
+                  ) : (
+                    <>
+                      <FileSpreadsheet className="w-4 h-4 mr-2" />
+                      Export Excel
+                    </>
+                  )}
+                </Button>
               </div>
             </Card>
           </>
