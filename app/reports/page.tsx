@@ -12,13 +12,17 @@ import { format } from 'date-fns';
 import {
   BarChart3,
   Calendar,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Crown,
+  ArrowRight
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function ReportsPage() {
-  const { user, loading, isTeacher } = useAuth();
+  const { user, loading, isTeacher, isAdmin } = useAuth();
   const { addToast } = useToast();
+  const router = useRouter();
   const [selectedSection, setSelectedSection] = useState<string>('all');
   const [dateRange, setDateRange] = useState<DateRange>({
     from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
@@ -28,6 +32,13 @@ export default function ReportsPage() {
   const [exporting, setExporting] = useState(false);
   const [sections, setSections] = useState<string[]>([]);
 
+  const defaultToAdminView = localStorage.getItem('defaultToAdminView') === 'true' && isAdmin;
+
+  useEffect(() => {
+    if (defaultToAdminView) {
+      router.push('/reports/admin');
+    }
+  }, [defaultToAdminView, router]);
 
   // Load available sections on mount
   useEffect(() => {
@@ -130,6 +141,37 @@ export default function ReportsPage() {
   return (
     <div className="min-h-screen p-2 md:p-6">
       <div className="max-w-7xl mx-auto">
+        {/* Admin Access Header */}
+        {isAdmin && (
+          <Card variant="cyber" className="p-4 mb-6 bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <Crown className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-purple-900">Head to Admin View</h3>
+                  <p className="text-sm text-purple-600">
+                    Access comprehensive analytics and system-wide reports
+                  </p>
+                </div>
+              </div>
+              
+              <Button
+                onClick={() => {
+                  localStorage.setItem('defaultToAdminView', 'true');
+                  router.push('/reports/admin');
+                }}
+                className="bg-purple-600 hover:bg-purple-700 text-white"
+              >
+                <Crown className="w-4 h-4 mr-2" />
+                Admin View
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+          </Card>
+        )}
+
         {/* Header */}
         <div className="text-center mb-6 md:mb-12">
           <div className="flex items-center justify-center mb-3 md:mb-6">

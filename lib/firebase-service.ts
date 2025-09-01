@@ -1,3 +1,4 @@
+import { DateRange } from '@/components/ui/date-picker';
 import { db } from '@/lib/firebase';
 import {
   collection,
@@ -120,7 +121,7 @@ export class FirebaseService {
   }) {
     try {
       const sessionRef = doc(db, 'attendance_sessions', sessionId);
-      
+
       // Filter only present students
       const presentStudents = updateData.records
         .filter(record => record.isPresent)
@@ -139,7 +140,7 @@ export class FirebaseService {
 
       // Clear relevant caches
       sessionsCache.clear();
-      
+
       return sessionId;
     } catch (error) {
       console.error('Error updating attendance session:', error);
@@ -328,5 +329,77 @@ export class FirebaseService {
   static clearCache() {
     studentsCache.clear();
     sessionsCache.clear();
+  }
+
+  static async getAdminStudents(refetch = false, section?: string) {
+    const CACHE_KEY = 'adminStudentsCache';
+    const CACHE_DURATION = 2 * 24 * 60 * 60 * 1000; // 48 hours
+
+    let students: any[] = [];
+    const now = Date.now();
+
+    // Read cache object from localStorage
+    const cacheObj = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+    const cachedTimestamp = cacheObj.timestamp;
+    const isCacheValid = cachedTimestamp && (now - cachedTimestamp) < CACHE_DURATION;
+
+    if (!isCacheValid || refetch) {
+      console.log('Fetching students from Firestore...');
+      students = await getDocs(query(collection(db, 'students'))).then(snapshot =>
+        snapshot.docs.map(doc => ({
+          id: doc.id,
+          name: doc.data().name,
+          usn: doc.data().usn,
+          section: doc.data().section
+        }))
+      );
+      // Sort students by USN
+      students.sort((a, b) => a.usn.localeCompare(b.usn));
+      // Store both students and timestamp in a single object
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ students, timestamp: now }));
+    } else {
+      students = cacheObj.students || [];
+    }
+
+    // Apply section filter if provided
+    if (section) {
+      students = students.filter((s: any) => s.section === section);
+    }
+    return students;
+  }
+
+  static async getAdminAttendanceSessions(refetch = false, filters?: {
+    section?: string;
+    teacherId?: string;
+    dateRange?: DateRange;
+  }) {
+    const CACHE_KEY = 'adminAttendanceSessionsCache';
+    const CACHE_DURATION = 2 * 24 * 60 * 60 * 1000; // 48 hours
+
+    let sessions: any[] = [];
+    const now = Date.now();
+
+    // Read cache object from localStorage
+    const cacheObj = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+    const cachedTimestamp = cacheObj.timestamp;
+    const isCacheValid = cachedTimestamp && (now - cachedTimestamp) < CACHE_DURATION;
+
+    if (!isCacheValid || refetch) {
+      console.log('Fetching attendance sessions from Firestore...');
+      sessions = await this.getAttendanceSessions();
+      // Store both sessions and timestamp in a single object
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ sessions, timestamp: now }));
+    } else {
+      sessions = cacheObj.sessions || [];
+    }
+
+    // Apply filters if provided
+    if (filters) {
+      if (filters.section) sessions = sessions.filter((s: any) => s.section === filters.section);
+      if (filters.teacherId) sessions = sessions.filter((s: any) => s.teacherId === filters.teacherId);
+      if (filters.dateRange?.from) sessions = sessions.filter((s: any) => new Date(s.date) >= filters.dateRange!.from!);
+      if (filters.dateRange?.to) sessions = sessions.filter((s: any) => new Date(s.date) <= filters.dateRange!.to!);
+    }
+    return sessions;
   }
 }

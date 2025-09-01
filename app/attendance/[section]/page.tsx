@@ -47,6 +47,7 @@ export default function SectionAttendancePage() {
   const urlDate = searchParams.get('date');
   const urlTime = searchParams.get('time');
   const isEditMode = searchParams.get('edit') === 'true';
+  const showForAdmin = searchParams.get('admin') === 'true' && user?.role === 'admin';
 
   const [students, setStudents] = useState<Student[]>([]);
   const [attendance, setAttendance] = useState<Record<string, boolean>>({});
@@ -146,7 +147,7 @@ export default function SectionAttendancePage() {
     try {
       const sessions = await FirebaseService.getAttendanceSessions({
         section,
-        teacherId: user?.uid
+        teacherId: showForAdmin ? undefined : user?.uid
       });
       setSectionSessions(sessions);
     } catch (error) {
