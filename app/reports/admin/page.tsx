@@ -274,9 +274,9 @@ export default function AdminReportsPage() {
         </div>
 
         {adminStats && (
-          <>
+          <div className="space-y-6">
             {/* Overview Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <StatsCard
                 title="Total Students"
                 value={adminStats.totalStudents}
@@ -308,7 +308,7 @@ export default function AdminReportsPage() {
             </div>
 
             {/* Date Range Filter */}
-            <Card variant="cyber" className="p-6 mb-8 overflow-visible z-[1]">
+            <Card variant="cyber" className="p-6 overflow-visible z-[1]">
               <h3 className="text-lg font-semibold text-cyber-gray-900 mb-4">Filter by Date Range</h3>
               <DatePicker
                 date={dateRange}
@@ -324,22 +324,22 @@ export default function AdminReportsPage() {
               />
             </Card>
 
-            {/* Section-wise Analysis */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-              <SectionChart
-                data={adminStats.sectionStats}
-                title="Section-wise Attendance Rate"
-                sessionStats={adminStats.sessionStats}
-                onSectionSelect={(section) => router.push(`/attendance/${section}?admin=true`)}
-              />
+            {/* Session-wise Pie Chart */}
+            <PieChart
+              data={adminStats.sessionPieData}
+              title="Session-wise Distribution"
+              selectedSessions={selectedSessions}
+              onSessionSelect={handleSessionSelect}
+              layout="horizontal"
+            />
 
-              <PieChart
-                data={adminStats.sessionPieData}
-                title="Session-wise Distribution"
-                selectedSessions={selectedSessions}
-                onSessionSelect={handleSessionSelect}
-              />
-            </div>
+            {/* Section-wise Analysis - Full Width */}
+            <SectionChart
+              data={adminStats.sectionStats}
+              title="Section-wise Attendance Rate"
+              sessionStats={adminStats.sessionStats}
+              onSectionSelect={(section) => router.push(`/attendance/${section}?admin=true`)}
+            />
 
             {/* Recent Activity - Full Width */}
             <Card variant="cyber" className="p-6 mb-8">
@@ -433,7 +433,7 @@ export default function AdminReportsPage() {
                 </Button>
               </div>
             </Card>
-          </>
+          </div>
         )}
 
         {/* WIP - Fancy notice */}
