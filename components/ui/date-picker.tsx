@@ -5,6 +5,8 @@ import * as React from "react";
 import { DayPicker, Mode, DateRange } from "react-day-picker";
 import "react-day-picker/style.css";
 
+export type { DateRange } from "react-day-picker";
+
 interface DatePickerProps {
   date?: Date | Date[] | DateRange;
   onDateChange?: (date: Date | Date[] | DateRange | undefined) => void;

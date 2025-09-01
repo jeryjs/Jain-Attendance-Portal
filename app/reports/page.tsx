@@ -2,26 +2,19 @@
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { DatePicker } from "@/components/ui/date-picker";
+import { DatePicker, DateRange } from "@/components/ui/date-picker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { FirebaseService } from '@/lib/firebase-service';
-import { SESSION_OPTIONS } from '@/lib/types';
+import { exportToExcel } from '@/lib/utils';
+import { format } from 'date-fns';
 import {
   BarChart3,
-  Download,
   Calendar,
   FileSpreadsheet
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { format, eachDayOfInterval } from 'date-fns';
-import * as XLSX from 'xlsx';
-
-interface DateRange {
-  from: Date;
-  to: Date;
-}
+import { useEffect, useState } from 'react';
 
 export default function ReportsPage() {
   const { user, loading, isTeacher } = useAuth();
@@ -66,158 +59,51 @@ export default function ReportsPage() {
   }, [user?.uid, addToast]);
 
   // Generate Excel export
-  const exportToExcel = async () => {
+  const handleExportToExcel = async () => {
     if (!user?.uid || !dateRange.from || !dateRange.to) return;
-
+    
     try {
       setExporting(true);
-      const daysInRange = eachDayOfInterval({ start: dateRange.from, end: dateRange.to });
-
+      
       const sessions = await FirebaseService.getAttendanceSessions({
         teacherId: user.uid,
         section: selectedSection === 'all' ? undefined : selectedSection,
         dateRange: { start: dateRange.from, end: dateRange.to }
       });
-
+      
       if (sessions.length === 0) {
         addToast({ title: "No Data", description: "No attendance sessions found", variant: "default" });
         return;
       }
-
-      const sectionsToProcess = selectedSection === 'all'
-        ? Array.from(new Set(sessions.map(s => s.section)))
-        : [selectedSection];
-
-      const workbook = XLSX.utils.book_new();
-
-      for (const section of sectionsToProcess) {
-        const sectionSessions = sessions.filter(s => s.section === section);
-        const students = await FirebaseService.getStudents(section);
-
-        const sessionsByDate = sectionSessions.reduce((acc, session) => {
-          if (!acc[session.date]) acc[session.date] = {};
-          acc[session.date][session.session] = session;
-          return acc;
-        }, {} as Record<string, Record<string, any>>);
-
-        // Build headers with merging info
-        const headers = ['USN', 'Name'];
-        const subHeaders = ['', ''];
-        const merges = [];
-        let colIndex = 2;
-
-        for (const day of daysInRange) {
-          const dateStr = format(day, 'yyyy-MM-dd');
-          const dayFormat = format(day, 'MM/dd');
-          const sessionsForDay = sessionsByDate[dateStr] || {};
-          const sessionTimes = Object.keys(sessionsForDay).sort();
-
-          if (sessionTimes.length === 0) continue;
-
-          if (sessionTimes.length === 1) {
-            headers.push(dayFormat);
-            subHeaders.push(sessionTimes[0]);
-            colIndex++;
-          } else {
-            // Merge header for multiple sessions
-            const startCol = colIndex;
-            const endCol = colIndex + sessionTimes.length - 1;
-            merges.push({ s: { r: 0, c: startCol }, e: { r: 0, c: endCol } });
-
-            headers.push(dayFormat);
-            sessionTimes.forEach((time, i) => {
-              if (i > 0) headers.push('');
-              subHeaders.push(time);
-            });
-            colIndex += sessionTimes.length;
-          }
-        }
-
-        headers.push('Total', 'Percentage');
-        subHeaders.push('', '');
-
-        // Build data with formulas
-        const wsData = [headers, subHeaders];
-
-        students.forEach((student, rowIndex) => {
-          const row = [student.usn, student.name];
-          const dataRow = rowIndex + 3; // Excel row (1-indexed, +2 for headers)
-
-          for (const day of daysInRange) {
-            const dateStr = format(day, 'yyyy-MM-dd');
-            const sessionsForDay = sessionsByDate[dateStr] || {};
-            const sessionTimes = Object.keys(sessionsForDay).sort();
-
-            if (sessionTimes.length === 0) continue;
-
-            sessionTimes.forEach(sessionTime => {
-              const session = sessionsForDay[sessionTime];
-              const studentRecord = session?.records?.find((r: any) => r.studentUsn === student.usn);
-              row.push(studentRecord?.isPresent ? 'P' : 'A');
-            });
-          }
-
-          // Add formulas for total and percentage
-          const attendanceStartCol = String.fromCharCode(67); // C
-          const attendanceEndCol = String.fromCharCode(66 + headers.length - 2); // Before Total column
-          row.push(
-            `=COUNTIF(${attendanceStartCol}${dataRow}:${attendanceEndCol}${dataRow},"P")`,
-            `=IF(COUNTA(${attendanceStartCol}${dataRow}:${attendanceEndCol}${dataRow})=0,0,COUNTIF(${attendanceStartCol}${dataRow}:${attendanceEndCol}${dataRow},"P")/COUNTA(${attendanceStartCol}${dataRow}:${attendanceEndCol}${dataRow}))`
-          );
-
-          wsData.push(row);
-        });
-
-        const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-        // Apply merges
-        ws['!merges'] = merges;
-
-        // Apply styles
-        const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-        for (let R = 2; R <= range.e.r; R++) {
-          for (let C = 2; C <= range.e.c; C++) {
-            const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
-            if (!ws[cellRef]) continue;
-
-            const isTotal = C >= range.e.c - 1;
-            const value = ws[cellRef].v;
-
-            ws[cellRef].s = {
-              fill: {
-                fgColor: {
-                  rgb: isTotal
-                    ? (typeof value === 'number' && value >= 0.7 ? '006400' : '8B0000')
-                    : (value === 'P' ? '006400' : '8B0000')
-                }
-              },
-              font: { color: { rgb: 'FFFFFF' } },
-              numFmt: isTotal && C === range.e.c ? '0%' : undefined
-            };
-          }
-        }
-
-        // Auto-fit columns
-        ws['!cols'] = headers.map((_, i) => ({
-          wch: i === 0 ? 15 : i === 1 ? 25 : i >= headers.length - 2 ? 12 : 8
-        }));
-
-        XLSX.utils.book_append_sheet(workbook, ws, section);
-      }
-
-      const fileName = `Attendance_Report_${format(dateRange.from, 'MMM_yyyy')}.xlsx`;
-      XLSX.writeFile(workbook, fileName);
-
+      
+      const excelBlob = await exportToExcel({
+        userId: user.uid,
+        dateRange,
+        selectedSection,
+        sessions,
+        getStudents: FirebaseService.getStudents
+      });
+      
+      // Create download link
+      const url = window.URL.createObjectURL(excelBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Attendance_Report_${format(dateRange.from, 'MMM_yyyy')}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
       addToast({
         title: "Export Successful",
-        description: `Report exported as ${fileName}`,
+        description: `Report exported successfully`,
         variant: "success"
       });
-
+      
     } catch (error) {
       console.error('Error exporting report:', error);
       addToast({
-        title: "Export Failed",
+        title: "Export Failed", 
         description: "Failed to export attendance report",
         variant: "destructive"
       });
@@ -311,7 +197,7 @@ export default function ReportsPage() {
             <div className="space-y-2">
               <label className="text-xs md:text-sm font-medium text-cyber-gray-700">Export Options</label>
               <Button
-                onClick={exportToExcel}
+                onClick={handleExportToExcel}
                 disabled={exporting || sections.length === 0}
                 className="w-full text-sm md:text-base bg-gradient-to-r from-cyber-yellow to-cyber-yellow-dark text-cyber-gray-900 hover:shadow-lg"
               >
