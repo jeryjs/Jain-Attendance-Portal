@@ -21,7 +21,7 @@ import {
   type LucideIcon
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo } from 'react';
 import PieChart from './PieChart';
 import SectionChart from './SectionChart';
 import { AdminStats } from './types';
@@ -35,7 +35,7 @@ import {
   parseSessionTime
 } from './utils';
 
-const StatsCard = ({ title, value, icon: Icon, color, subtitle }: {
+const StatsCard = memo(({ title, value, icon: Icon, color, subtitle }: {
   title: string;
   value: string | number;
   icon: LucideIcon;
@@ -54,7 +54,7 @@ const StatsCard = ({ title, value, icon: Icon, color, subtitle }: {
       </div>
     </div>
   </Card>
-);
+));
 
 export default function AdminReportsPage() {
   const { user, loading, isAdmin } = useAuth();
