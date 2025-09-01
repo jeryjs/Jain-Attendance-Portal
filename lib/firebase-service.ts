@@ -14,6 +14,7 @@ import {
   where,
   writeBatch
 } from 'firebase/firestore';
+import { AttendanceSession, Student } from './types';
 
 // Cache for student data
 const studentsCache = new Map<string, { data: any[], timestamp: number }>();
@@ -336,7 +337,7 @@ export class FirebaseService {
     const CACHE_KEY = 'adminStudentsCache';
     const CACHE_DURATION = 2 * 24 * 60 * 60 * 1000; // 48 hours
 
-    let students: any[] = [];
+    let students: Student[] = [];
     const now = Date.now();
 
     // Read cache object from localStorage
@@ -353,7 +354,7 @@ export class FirebaseService {
           usn: doc.data().usn,
           section: doc.data().section
         }))
-      );
+      ) as Student[];
       localStorage.setItem(CACHE_KEY, JSON.stringify({ students, timestamp: now }));
     } else {
       students = cacheObj.students || [];
@@ -374,7 +375,7 @@ export class FirebaseService {
     const CACHE_KEY = 'adminAttendanceSessionsCache';
     const CACHE_DURATION = 2 * 24 * 60 * 60 * 1000; // 48 hours
 
-    let sessions: any[] = [];
+    let sessions: AttendanceSession[] = [];
     const now = Date.now();
 
     // Read cache object from localStorage
@@ -386,7 +387,7 @@ export class FirebaseService {
       console.log('Fetching attendance sessions from Firestore...');
       sessions = await getDocs(query(collection(db, 'attendance_sessions'), orderBy('date'))).then(snapshot =>
         snapshot.docs.map(doc => ({ id: doc.id, ...doc.data()}))
-      );
+      ) as AttendanceSession[];
       localStorage.setItem(CACHE_KEY, JSON.stringify({ sessions, timestamp: now }));
     } else {
       sessions = cacheObj.sessions || [];

@@ -10,71 +10,19 @@ import { FirebaseService } from '@/lib/firebase-service';
 import { exportToExcel } from '@/lib/utils';
 import { format } from 'date-fns';
 import {
-  BarChart3,
-  Users,
-  GraduationCap,
-  TrendingUp,
-  RefreshCw,
-  Download,
-  FileSpreadsheet,
+  Activity,
   ArrowLeft,
-  Crown,
-  Calendar,
   Clock,
+  Crown,
+  FileSpreadsheet,
+  GraduationCap,
   Percent,
-  Activity
+  RefreshCw,
+  Users
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-
-// Simple Chart Components
-const SectionChart = ({ data, title, sessionStats }: {
-  data: Array<{ name: string; value: number; color: string; sessions: any[] }>,
-  title: string,
-  sessionStats: any[]
-}) => (
-  <Card variant="cyber" className="p-6">
-    <h3 className="text-lg font-semibold text-cyber-gray-900 mb-4">{title}</h3>
-    <div className="space-y-3">
-      {data.map((item, index) => (
-        <div key={index} className="space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-cyber-gray-700">{item.name}</span>
-            <span className="text-sm font-semibold text-cyber-gray-900">{item.value}%</span>
-          </div>
-          <div className="flex bg-cyber-gray-100 rounded-full h-6 overflow-hidden">
-            {item.sessions.map((session: any, idx: number) => {
-              const sessionStat = sessionStats.find(s => s.name === session.session);
-              const width = (session.count / item.sessions.reduce((sum: number, s: any) => sum + s.count, 0)) * 100;
-              return (
-                <div
-                  key={idx}
-                  className="h-full flex items-center justify-center text-xs font-medium text-white cursor-pointer hover:opacity-80 transition-opacity"
-                  style={{
-                    width: `${width}%`,
-                    backgroundColor: sessionStat?.color || '#6b7280',
-                    minWidth: width > 10 ? 'auto' : '0px'
-                  }}
-                  title={`${session.session}: ${session.attendance}% (${session.present}/${session.total})`}
-                >
-                  {width > 15 ? `${session.attendance}%` : ''}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ))}
-    </div>
-    <div className="mt-4 flex flex-wrap gap-2">
-      {sessionStats.map((session: any, idx: number) => (
-        <div key={idx} className="flex items-center gap-1 text-xs">
-          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: session.color }}></div>
-          <span>{session.name}</span>
-        </div>
-      ))}
-    </div>
-  </Card>
-);
+import { useEffect, useState } from 'react';
+import SectionChart from './SectionChart';
 
 const PieChart = ({ data, title, selectedSessions, onSessionSelect }: {
   data: Array<{ name: string; value: number; color: string; count: number }>,
@@ -553,8 +501,8 @@ export default function AdminReportsPage() {
                         {session.presentCount}/{session.totalStudents}
                       </span>
                       <span className={`text-sm font-semibold ${Math.round((session.presentCount / session.totalStudents) * 100) >= 75
-                          ? 'text-green-600'
-                          : 'text-orange-600'
+                        ? 'text-green-600'
+                        : 'text-orange-600'
                         }`}>
                         {Math.round((session.presentCount / session.totalStudents) * 100)}%
                       </span>

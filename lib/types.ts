@@ -14,22 +14,18 @@ export interface Student {
 }
 
 export interface AttendanceSession {
-  id: string;
-  section: string;
-  date: string;
-  session: string;
-  teacherId: string;
-  teacherEmail: string;
+  absentCount: number;
   createdAt: Date;
+  date: string;
+  editHistory: { details: string, email: string, timestamp: Date }[];
+  presentCount: number;
+  presentStudents: string[];
+  section: string;
+  session: SessionOption;
+  teacherEmail: string;
+  teacherId: string;
+  totalStudents: number;
   updatedAt: Date;
-}
-
-export interface AttendanceRecord {
-  sessionId: string;
-  studentUsn: string;
-  isPresent: boolean;
-  markedAt: Date;
-  markedBy: string;
 }
 
 export interface User {
