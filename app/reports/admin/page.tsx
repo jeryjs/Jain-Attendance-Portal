@@ -13,7 +13,6 @@ import {
   Activity,
   ArrowLeft,
   Clock,
-  Crown,
   FileSpreadsheet,
   GraduationCap,
   Percent,
@@ -23,16 +22,17 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import SectionChart from './SectionChart';
 import PieChart from './PieChart';
+import SectionChart from './SectionChart';
 import { AdminStats } from './types';
 import {
-  calculateSessionStats,
-  calculateSectionStats,
-  filterSectionStats,
-  calculateSessionPieData,
   calculateOverallStats,
-  getRecentSessions
+  calculateSectionStats,
+  calculateSessionPieData,
+  calculateSessionStats,
+  filterSectionStats,
+  getRecentSessions,
+  parseSessionTime
 } from './utils';
 
 const StatsCard = ({ title, value, icon: Icon, color, subtitle }: {
@@ -82,6 +82,13 @@ export default function AdminReportsPage() {
     );
   };
 
+  // alert that desktop view is recommended
+  useEffect(() => {
+    if (window != undefined && window.innerWidth < 768) {
+      alert("For the best experience, please use the desktop view to access the admin dashboard. This page is not supported on mobile devices.");
+    }
+  }, []);
+
   // Load admin data
   useEffect(() => {
     const loadAdminData = async () => {
@@ -94,7 +101,7 @@ export default function AdminReportsPage() {
         const [sessions, students] = await Promise.all([
           FirebaseService.getAdminAttendanceSessions(false, {
             dateRange: dateRange.from && dateRange.to ? dateRange : undefined
-          }),
+          }).then(res => res.toSorted((a, b) => parseSessionTime(a.session).start - parseSessionTime(b.session).start)),
           FirebaseService.getAdminStudents(false)
         ]);
 
@@ -244,7 +251,6 @@ export default function AdminReportsPage() {
             </Button>
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-purple-900">
-                <Crown className="w-8 h-8 inline mr-3" />
                 Admin Dashboard
               </h1>
               <p className="text-purple-600">First Years Attendance Analytics</p>
@@ -308,30 +314,45 @@ export default function AdminReportsPage() {
             </div>
 
             {/* Date Range Filter */}
-            <Card variant="cyber" className="p-6 overflow-visible z-[1]">
-              <h3 className="text-lg font-semibold text-cyber-gray-900 mb-4">Filter by Date Range</h3>
-              <DatePicker
-                date={dateRange}
-                onDateChange={(range) => {
-                  if (range && 'from' in range && range.from && range.to) {
-                    setDateRange({ from: range.from, to: range.to });
-                  }
-                }}
-                disabledDates={date => date < new Date(2025, 7, 25) || date > new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)}
-                placeholder="Select date range"
-                mode="range"
-                className='z-40'
-              />
-            </Card>
+            <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
+              <Card variant="cyber" className="p-6 grid overflow-visible z-[1]">
+                <h3 className="text-lg font-semibold text-cyber-gray-900 mb-4">Filter by Date Range</h3>
+                <DatePicker
+                  date={dateRange}
+                  onDateChange={(range) => {
+                    if (range && 'from' in range && range.from && range.to) {
+                      setDateRange({ from: range.from, to: range.to });
+                    }
+                  }}
+                  disabledDates={date => date < new Date(2025, 7, 25) || date > new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)}
+                  placeholder="Select date range"
+                  mode="range"
+                  className='z-40'
+                />
+                <h3 className="text-lg font-semibold text-cyber-gray-900 mt-6 mb-4">Filter Sections</h3>
+                <Select value={selectedSection} onValueChange={setSelectedSection}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Sections" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Sections</SelectItem>
+                    {sections.map(section => (
+                      <SelectItem key={section} value={section}>{section}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Card>
 
-            {/* Session-wise Pie Chart */}
-            <PieChart
-              data={adminStats.sessionPieData}
-              title="Session-wise Distribution"
-              selectedSessions={selectedSessions}
-              onSessionSelect={handleSessionSelect}
-              layout="horizontal"
-            />
+              {/* Session-wise Pie Chart */}
+              <Card variant="cyber" className="p-6">
+                <h3 className="text-lg font-semibold text-cyber-gray-900 mb-4">Session-wise Distribution</h3>
+                <PieChart
+                  data={adminStats.sessionPieData}
+                  selectedSessions={selectedSessions}
+                  onSessionSelect={handleSessionSelect}
+                />
+              </Card>
+            </div>
 
             {/* Section-wise Analysis - Full Width */}
             <SectionChart

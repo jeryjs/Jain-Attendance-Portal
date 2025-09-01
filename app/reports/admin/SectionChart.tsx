@@ -2,8 +2,8 @@ import { Card } from "@/components/ui/card";
 import { Tooltip } from "@/components/ui/tooltip";
 import { SESSION_OPTIONS } from "@/lib/types";
 import { getProgramName } from "@/lib/utils";
-import { SessionStat, SectionData, SectionSession } from "./types";
-import { sortSessionsByTime, parseSessionTime } from "./utils";
+import { SectionData, SectionSession, SessionStat } from "./types";
+import { parseSessionTime } from "./utils";
 
 const SectionChart = ({ data, title, sessionStats, onSectionSelect }: {
   data: SectionData[],
@@ -11,8 +11,6 @@ const SectionChart = ({ data, title, sessionStats, onSectionSelect }: {
   sessionStats: SessionStat[],
   onSectionSelect: (section: string) => void
 }) => {
-  const sortedSessionStats = sortSessionsByTime(sessionStats);
-
   // Calculate session dependencies and widths - SectionChart specific logic
   const getSessionLayout = (sectionSessions: SectionSession[]): { session: string; width: number; color: string; attendance: number; present: number; total: number }[] => {
     const availableSessions = sectionSessions.filter(s => s.count > 0);
@@ -40,7 +38,7 @@ const SectionChart = ({ data, title, sessionStats, onSectionSelect }: {
       );
 
       const sessionData = availableSessions.find(s => s.session === sessionTime.session);
-      const sessionStat = sortedSessionStats.find(s => s.name === sessionTime.session);
+      const sessionStat = sessionStats.find(s => s.name === sessionTime.session);
 
       // Determine width and whether to show
       let width = 1;
@@ -80,7 +78,7 @@ const SectionChart = ({ data, title, sessionStats, onSectionSelect }: {
     <Card variant="cyber" className="p-6">
       <h3 className="text-lg font-semibold text-cyber-gray-900 mb-4">{title}</h3>
       <div className="my-4 flex flex-wrap gap-2">
-        {sortedSessionStats.map((session, idx) => {
+        {sessionStats.map((session, idx) => {
           const option = SESSION_OPTIONS.find(opt => opt.key === session.name);
           const label = option?.value.split(' to ')[0] + (option?.value.includes('(2hrs)') ? ' (2hr)' : '');
           return (

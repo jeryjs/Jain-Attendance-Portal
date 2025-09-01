@@ -1,5 +1,5 @@
 import { AttendanceSession } from '@/lib/types';
-import { SessionStat, SectionSession, ParsedSessionTime, SectionStat, SessionPieData, AdminStats } from './types';
+import { ParsedSessionTime, SectionStat, SessionPieData, SessionStat } from './types';
 
 export const parseSessionTime = (session: string): ParsedSessionTime => {
   const [start, end] = session.split('-');
@@ -19,8 +19,20 @@ export const sortSessionsByTime = (sessions: SessionStat[]): SessionStat[] => {
 };
 
 export const calculateSessionStats = (sessions: AttendanceSession[]): SessionStat[] => {
-  const sessionNames = Array.from(new Set(sessions.map(s => s.session))).sort();
-  const sessionColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+  const sessionNames = Array.from(new Set(sessions.map(s => s.session)));
+  const sessionColors = [
+    // Group 1
+    '#FF8F00', // darkest amber
+    '#FFB300', // bright amber
+    '#FFD54F', // light amber
+    // Group 2
+    '#26A69A', // teal
+    '#4DD0E1', // light teal
+    // Group 3
+    '#7E57C2', // purple
+    '#8E24AA', // deep violet
+    '#B39DDB'  // very light purple
+  ];
 
   return sessionNames.map((session, idx) => ({
     name: session,
