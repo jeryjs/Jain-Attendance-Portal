@@ -498,6 +498,7 @@ export default function AdminReportsPage() {
                 data={adminStats.sectionStats}
                 title="Section-wise Attendance Rate"
                 sessionStats={adminStats.sessionStats}
+                onSectionSelect={(section) => router.push(`/attendance/${section}?admin=true`)}
               />
 
               <PieChart

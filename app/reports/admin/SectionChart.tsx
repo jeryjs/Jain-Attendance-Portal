@@ -3,10 +3,11 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { SESSION_OPTIONS } from "@/lib/types";
 import { getProgramName } from "@/lib/utils";
 
-const SectionChart = ({ data, title, sessionStats }: {
+const SectionChart = ({ data, title, sessionStats, onSectionSelect }: {
   data: Array<{ name: string; value: number; color: string; sessions: any[] }>,
   title: string,
-  sessionStats: any[]
+  sessionStats: any[],
+  onSectionSelect: (section: string) => void
 }) => {
   // Parse session time and calculate dependencies
   const parseSessionTime = (session: string) => {
@@ -113,7 +114,7 @@ const SectionChart = ({ data, title, sessionStats }: {
             <div key={index} className="space-y-2">
               <div className="flex items-center gap-3">
                 <Tooltip content={getProgramName(item.name) || item.name} side="right" delay={10}>
-                  <div className="min-w-0 flex-shrink-0 w-20">
+                  <div className="min-w-0 flex-shrink-0 w-20" onClick={() => onSectionSelect(item.name)} style={{ cursor: 'pointer' }}>
                     <span className="text-sm font-medium text-cyber-gray-700">
                       {item.name.replace('CSE P', 'P').replace('GEN AI', 'GenAI').replace('CYBER SECURITY', 'CS')} <span className="text-cyber-gray-400 font-normal">({Math.max(...item.sessions.map(s => s.total), 0)})</span>
                     </span>
