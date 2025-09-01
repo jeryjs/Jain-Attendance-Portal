@@ -10,7 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { FirebaseService } from '@/lib/firebase-service';
-import { SESSION_OPTIONS, SessionOption, Student } from '@/lib/types';
+import { AttendanceSession, SESSION_OPTIONS, SessionOption, Student } from '@/lib/types';
+import { getSessionLabel } from '@/lib/utils';
 import { format } from 'date-fns';
 import {
   AlertTriangle,
@@ -47,7 +48,7 @@ export default function SectionAttendancePage() {
   const urlDate = searchParams.get('date');
   const urlTime = searchParams.get('time');
   const isEditMode = searchParams.get('edit') === 'true';
-  const showForAdmin = searchParams.get('admin') === 'true' && user?.role === 'admin';
+  const isAdminView = searchParams.get('admin') === 'true' && user?.role === 'admin';
 
   const [students, setStudents] = useState<Student[]>([]);
   const [attendance, setAttendance] = useState<Record<string, boolean>>({});
@@ -147,8 +148,8 @@ export default function SectionAttendancePage() {
     try {
       const sessions = await FirebaseService.getAttendanceSessions({
         section,
-        teacherId: showForAdmin ? undefined : user?.uid
-      });
+        teacherId: isAdminView ? undefined : user?.uid
+      }).then(res => res.sort((a, b) => b.createdAt.toDate().getTime() - a.createdAt.toDate().getTime()));
       setSectionSessions(sessions);
     } catch (error) {
       console.error('Error loading section sessions:', error);
@@ -834,8 +835,8 @@ export default function SectionAttendancePage() {
                     <Clock className="w-4 h-4 md:w-5 md:h-5 text-cyber-yellow" />
                     Previous Sessions ({sectionSessions.length})
                   </h3>
-                  <div className="space-y-2 md:space-y-3">
-                    {sectionSessions.slice(0, 5).map((session: any) => {
+                  <div className="space-y-3">
+                    {sectionSessions.slice(0, 5).map((session: AttendanceSession) => {
                       const sessionDate = format(session.createdAt?.toDate() || new Date(), 'yyyy-MM-dd');
                       const sessionTime = session.session;
                       const sessionUrl = `/attendance/${encodeURIComponent(section)}?date=${sessionDate}&time=${sessionTime}`;
@@ -843,7 +844,7 @@ export default function SectionAttendancePage() {
                       return (
                         <div
                           key={session.id}
-                          className="flex items-center justify-between p-3 md:p-4 bg-cyber-gray-50 rounded-xl hover:bg-cyber-gray-100 cursor-pointer transition-colors group"
+                          className="flex items-center justify-between py-2 md:p-4 bg-cyber-gray-50 rounded-xl hover:bg-cyber-gray-100 cursor-pointer transition-colors group"
                           onClick={() => {
                             if (hasUnsavedChanges()) {
                               const confirmed = window.confirm(
@@ -862,7 +863,10 @@ export default function SectionAttendancePage() {
                               <p className="font-semibold text-cyber-gray-900 text-sm md:text-base">
                                 {format(session.createdAt?.toDate() || new Date(), 'MMM dd, yyyy')}
                               </p>
-                              <p className="text-xs md:text-sm text-cyber-gray-600">{session.session}</p>
+                              <p className="text-xs md:text-sm text-cyber-gray-600">
+                                <span className="md:hidden">{session.session}</span>
+                                <span className="hidden md:inline">{getSessionLabel(session.session)}{isAdminView && ` • ${session.teacherEmail}`}</span>
+                              </p>
                             </div>
                           </div>
                           <div className="text-right">

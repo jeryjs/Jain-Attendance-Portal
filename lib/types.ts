@@ -14,8 +14,9 @@ export interface Student {
 }
 
 export interface AttendanceSession {
+  id: string;
   absentCount: number;
-  createdAt: Date;
+  createdAt: Date & { toDate: () => Date };
   date: string;
   editHistory: { details: string, email: string, timestamp: Date }[];
   presentCount: number;

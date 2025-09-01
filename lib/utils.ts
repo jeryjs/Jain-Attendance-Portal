@@ -13,6 +13,10 @@ export const getProgramName = (section: string) => {
   return Object.entries(SECTION_MAPPINGS).find(([key]) => section.startsWith(key.replace('-', ' ')))?.[1]
 }
 
+export const getSessionLabel = (session: string) => {
+  return SESSION_OPTIONS.find(s => s.key === session)?.value || session;
+}
+
 export const getReportsRoute = () => {
   if (typeof window === 'undefined') return '/reports';
   return localStorage.getItem('defaultToAdminView') === 'true' ? '/reports/admin' : '/reports';
