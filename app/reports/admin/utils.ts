@@ -96,16 +96,27 @@ export const filterSectionStats = (
 
   return sectionStats.map(section => {
     const filteredSessionBreakdown = section.sessions.filter(s => selectedSessions.includes(s.session));
-    const totalFiltered = filteredSessionBreakdown.reduce((sum, s) => sum + s.total, 0);
-    const presentFiltered = filteredSessionBreakdown.reduce((sum, s) => sum + s.present, 0);
-    const attendanceRate = totalFiltered > 0 ? Math.round((presentFiltered / totalFiltered) * 100) : 0;
+
+    if (filteredSessionBreakdown.length === 0) {
+      // No sessions match the filter for this section
+      return {
+        ...section,
+        value: 0,
+        sessions: []
+      };
+    }
+
+    // Recalculate attendance based on filtered sessions
+    const totalPresent = filteredSessionBreakdown.reduce((sum, s) => sum + s.present, 0);
+    const totalPossible = filteredSessionBreakdown.reduce((sum, s) => sum + s.total, 0);
+    const attendanceRate = totalPossible > 0 ? Math.round((totalPresent / totalPossible) * 100) : 0;
 
     return {
       ...section,
       value: attendanceRate,
       sessions: filteredSessionBreakdown
     };
-  });
+  }).filter(section => section.sessions.length > 0); // Only include sections with sessions
 };
 
 export const calculateSessionPieData = (
@@ -132,8 +143,14 @@ export const calculateOverallStats = (
   const totalSessions = sessions.length;
   const totalStudents = students.length;
   const totalUniqueStudents = new Set(students.map((s: any) => s.usn)).size;
-  const averageAttendance = sectionStats.length > 0
-    ? Math.round(sectionStats.reduce((sum, s) => sum + s.value, 0) / sectionStats.length)
+
+  // Only include sections that have sessions in the filtered data
+  const validSectionStats = sectionStats.filter(section =>
+    section.sessions.length > 0 && section.sessions.some(s => s.count > 0)
+  );
+
+  const averageAttendance = validSectionStats.length > 0
+    ? Math.round(validSectionStats.reduce((sum, s) => sum + s.value, 0) / validSectionStats.length)
     : 0;
 
   return {
