@@ -1,9 +1,9 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { DatePicker } from "@/components/ui/date-picker";
 import { Card } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { DatePicker } from "@/components/ui/date-picker";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -27,8 +27,6 @@ import {
   List,
   Save,
   Search,
-  Sparkles,
-  Target,
   UserCheck,
   Users,
   X,
@@ -402,7 +400,15 @@ export default function SectionAttendancePage() {
       setRecentSections(prev => [section, ...prev.filter(s => s !== section)].slice(0, 9));
 
       if (isEditMode) router.replace(`/attendance/${encodeURIComponent(section)}?date=${urlDate}&time=${urlTime}`);
-      else router.refresh();  // avoid calling location.reload as i wanna retain the cache
+      else {
+        // router.refresh();  // avoid calling location.reload as i wanna retain the cache
+
+        // For new sessions, reload the data to update the UI state properly
+        await loadData(); // This will fetch the newly created session and update existingSession state
+
+        // Update the original attendance to reflect the saved state
+        setOriginalAttendance({ ...attendance });
+      }
     } catch (error) {
       console.error('Error saving attendance:', error);
       addToast({
