@@ -147,7 +147,7 @@ export default function AdminReportsPage() {
     };
 
     loadAdminData();
-  }, [user?.uid, isAdmin, selectedSessions, dateRange, addToast]);
+  }, [user?.uid, isAdmin, selectedSessions, dateRange]);
 
   // Force refetch data
   const handleRefetch = async () => {

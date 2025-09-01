@@ -1,5 +1,6 @@
 import { Tooltip } from "@/components/ui/tooltip";
 import { SESSION_OPTIONS } from "@/lib/types";
+import { memo } from "react";
 
 interface PieChartData {
   name: string;
@@ -8,7 +9,7 @@ interface PieChartData {
   count: number;
 }
 
-const PieChart = ({ data, selectedSessions, onSessionSelect }: {
+const PieChart = memo(({ data, selectedSessions, onSessionSelect }: {
   data: PieChartData[],
   selectedSessions: string[],
   onSessionSelect: (session: string) => void
@@ -95,6 +96,6 @@ const PieChart = ({ data, selectedSessions, onSessionSelect }: {
       </div>
     </div>
   );
-};
+});
 
-export default PieChart;
+export default memo(PieChart);

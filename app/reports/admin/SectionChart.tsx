@@ -2,10 +2,11 @@ import { Card } from "@/components/ui/card";
 import { Tooltip } from "@/components/ui/tooltip";
 import { SESSION_OPTIONS } from "@/lib/types";
 import { getProgramName } from "@/lib/utils";
+import { memo } from "react";
 import { SectionData, SectionSession, SessionStat } from "./types";
 import { parseSessionTime } from "./utils";
 
-const SectionChart = ({ data, title, sessionStats, onSectionSelect }: {
+const SectionChart = memo(({ data, title, sessionStats, onSectionSelect }: {
   data: SectionData[],
   title: string,
   sessionStats: SessionStat[],
@@ -208,6 +209,6 @@ const SectionChart = ({ data, title, sessionStats, onSectionSelect }: {
       </div>
     </Card>
   );
-};
+});
 
-export default SectionChart;
+export default memo(SectionChart);
