@@ -15,7 +15,7 @@ import {
 
 // Cache for student data
 const studentsCache = new Map<string, { data: any[], timestamp: number }>();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
 
 // Cache for attendance sessions
 const sessionsCache = new Map<string, { data: any[], timestamp: number }>();

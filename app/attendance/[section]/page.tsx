@@ -66,15 +66,13 @@ export default function SectionAttendancePage() {
   const isValidDate = (dateStr: string) => {
     const date = new Date(dateStr);
     const today = new Date();
-    const twoWeeksAgo = new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000);
+    const initialDate = new Date('2025-08-25'); // portal launch date
     const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
-    return date >= twoWeeksAgo && date <= tomorrow;
+    return date >= initialDate && date <= tomorrow;
   };
 
   // Check if session params are valid
-  const isValidSession = urlDate && urlTime &&
-    SESSION_OPTIONS.some(opt => opt.key === urlTime) &&
-    isValidDate(urlDate);
+  const isValidSession = urlDate && urlTime && SESSION_OPTIONS.some(opt => opt.key === urlTime) && isValidDate(urlDate);
   const sessionKey = `${section}_${urlDate}_${urlTime}`;
   const isViewOnly = !(isValidSession && (!existingSession || isEditMode));
 
@@ -89,6 +87,8 @@ export default function SectionAttendancePage() {
   }, [user, section, urlDate, urlTime]);
 
   const loadData = async () => {
+    if (loading) return;
+    
     try {
       setLoadingData(true);
       const studentsData = await FirebaseService.getStudents(section);
