@@ -10,7 +10,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const getReportsRoute = () => {
-  return localStorage.getItem('defaultToAdminView') == 'true'
+  return (typeof window !== 'undefined') && localStorage.getItem('defaultToAdminView') == 'true'
     ? '/reports/admin'
     : '/reports'
 }

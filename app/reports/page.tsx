@@ -32,7 +32,7 @@ export default function ReportsPage() {
   const [exporting, setExporting] = useState(false);
   const [sections, setSections] = useState<string[]>([]);
 
-  const defaultToAdminView = localStorage.getItem('defaultToAdminView') === 'true';
+  const defaultToAdminView = (typeof window !== 'undefined') && localStorage.getItem('defaultToAdminView') === 'true';
 
   useEffect(() => {
     if (defaultToAdminView) {
