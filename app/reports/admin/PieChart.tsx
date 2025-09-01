@@ -1,4 +1,5 @@
 import { Tooltip } from "@/components/ui/tooltip";
+import { SESSION_OPTIONS } from "@/lib/types";
 
 interface PieChartData {
   name: string;
@@ -38,34 +39,32 @@ const PieChart = ({ data, selectedSessions, onSessionSelect }: {
             currentAngle += angle;
 
             return (
-              <Tooltip content={`${item.name}: ${Math.round(percentage)}% (${item.count} sessions)`} key={index}>
-                <g key={index}>
-                  <path
-                    d={path}
-                    fill={item.color}
-                    className={`cursor-pointer transition-all duration-200 ${selectedSessions.includes(item.name)
-                      ? 'opacity-100 stroke-gray-800 stroke-2'
-                      : 'opacity-80 hover:opacity-100 stroke-white stroke-1'
-                      }`}
-                    onClick={() => onSessionSelect(item.name)}
-                    strokeWidth={selectedSessions.includes(item.name) ? 3 : 1}
+              <g key={index}>
+                <path
+                  d={path}
+                  fill={item.color}
+                  className={`cursor-pointer transition-all duration-200 ${selectedSessions.includes(item.name)
+                    ? 'opacity-100 stroke-gray-800 stroke-2'
+                    : 'opacity-80 hover:opacity-100 stroke-white stroke-1'
+                    }`}
+                  onClick={() => onSessionSelect(item.name)}
+                  strokeWidth={selectedSessions.includes(item.name) ? 3 : 1}
+                >
+                  <title>{`${item.name}: ${Math.round(percentage)}% (${item.count} sessions)`}</title>
+                </path>
+                {percentage > 1 && (
+                  <text
+                    x={textX}
+                    y={textY}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    className="fill-white font-semibold pointer-events-none select-none"
+                    style={{ fontSize: '10px' }}
                   >
-                    <title>{`${item.name}: ${Math.round(percentage)}% (${item.count} sessions)`}</title>
-                  </path>
-                  {percentage > 1 && (
-                    <text
-                      x={textX}
-                      y={textY}
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                      className="fill-white font-semibold pointer-events-none select-none"
-                      style={{ fontSize: '10px' }}
-                    >
-                      {Math.round(percentage)}%
-                    </text>
-                  )}
-                </g>
-              </Tooltip>
+                    {Math.round(percentage)}%
+                  </text>
+                )}
+              </g>
             );
           })}
         </svg>
@@ -74,24 +73,24 @@ const PieChart = ({ data, selectedSessions, onSessionSelect }: {
       {/* Compact Legend */}
       <div className="justify-center gap-4 mt-4 grid grid-cols-2">
         {data.map((item, index) => (
-          <div
-            key={index}
-            className={`flex items-center gap-2 px-3 py-1 rounded-full cursor-pointer transition-all ${selectedSessions.includes(item.name)
-              ? 'bg-purple-100 border-2 border-purple-300'
-              : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
-              }`}
-            onClick={() => onSessionSelect(item.name)}
-            title={`${item.name}: ${Math.round((item.value / total) * 100)}% (${item.count} sessions)`}
-          >
+          <Tooltip sideOffset={4} content={<>{SESSION_OPTIONS.find(opt => opt.key === item.name)?.value}<br /><i className="text-xs text-gray-400">{item.value} students ({item.count} sessions)</i></>} key={index}>
             <div
-              className="w-3 h-3 rounded-full flex-shrink-0"
-              style={{ backgroundColor: item.color }}
-            ></div>
-            <span className="text-xs font-medium text-gray-700">{item.name}</span>
-            <span className="text-xs font-semibold text-gray-900">
-              {Math.round((item.value / total) * 100)}%
-            </span>
-          </div>
+              className={`flex items-center gap-2 px-3 py-1 rounded-full cursor-pointer transition-all ${selectedSessions.includes(item.name)
+                ? 'bg-purple-100 border-2 border-purple-300'
+                : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
+                }`}
+              onClick={() => onSessionSelect(item.name)}
+            >
+              <div
+                className="w-3 h-3 rounded-full flex-shrink-0"
+                style={{ backgroundColor: item.color }}
+              ></div>
+              <span className="text-xs font-medium text-gray-700">{item.name}</span>
+              <span className="text-xs font-semibold text-gray-900">
+                {Math.round((item.value / total) * 100)}%
+              </span>
+            </div>
+          </Tooltip>
         ))}
       </div>
     </div>
