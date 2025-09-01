@@ -1,172 +1,229 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card } from '@/components/ui/card';
 import { DatePicker } from "@/components/ui/date-picker";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
+import { FirebaseService } from '@/lib/firebase-service';
+import { SESSION_OPTIONS } from '@/lib/types';
 import {
   BarChart3,
-  Calendar as CalendarIcon,
   Download,
-  Filter,
-  TrendingUp,
-  Users,
-  Clock,
-  Target,
-  Sparkles,
-  FileText,
-  PieChart,
-  Activity
+  Calendar,
+  FileSpreadsheet
 } from 'lucide-react';
-import { FirebaseService } from '@/lib/firebase-service';
-import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { useState, useEffect } from 'react';
+import { format, eachDayOfInterval } from 'date-fns';
+import * as XLSX from 'xlsx';
 
-interface ReportData {
-  sessions: any[];
-  attendanceStats: {
-    totalPresent: number;
-    totalAbsent: number;
-    averageAttendance: number;
-  };
-  sectionStats: Record<string, {
-    present: number;
-    absent: number;
-    total: number;
-    percentage: number;
-  }>;
+interface DateRange {
+  from: Date;
+  to: Date;
 }
 
 export default function ReportsPage() {
-  const { user, loading, isTeacher, isAdmin } = useAuth();
-  const router = useRouter();
-  const [reportData, setReportData] = useState<ReportData>({
-    sessions: [],
-    attendanceStats: { totalPresent: 0, totalAbsent: 0, averageAttendance: 0 },
-    sectionStats: {}
-  });
-  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
+  const { user, loading, isTeacher } = useAuth();
+  const { addToast } = useToast();
   const [selectedSection, setSelectedSection] = useState<string>('all');
-  const [loadingReports, setLoadingReports] = useState(true);
+  const [dateRange, setDateRange] = useState<DateRange>({
+    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+    to: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)
+  });
+  const [loadingReports, setLoadingReports] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [sections, setSections] = useState<string[]>([]);
 
-  useEffect(() => {
-    if (!loading && (!user || !isTeacher)) {
-      router.push('/');
-    }
-  }, [user, loading, isTeacher, router]);
 
+  // Load available sections on mount
   useEffect(() => {
-    if (user) {
-      loadReportData();
-    }
-  }, [user, selectedMonth, selectedSection]);
+    const loadSections = async () => {
+      if (!user?.uid) return;
 
-  const loadReportData = async () => {
-    if (!user?.uid) return;
+      try {
+        setLoadingReports(true);
+        // Get unique sections from user's sessions
+        const sessions = await FirebaseService.getAttendanceSessions({
+          teacherId: user.uid
+        });
+
+        const uniqueSections = Array.from(new Set(sessions.map(s => s.section)));
+        setSections(uniqueSections);
+      } catch (error) {
+        console.error('Error loading sections:', error);
+        addToast({
+          title: "Error",
+          description: "Failed to load sections",
+          variant: "destructive"
+        });
+      } finally {
+        setLoadingReports(false);
+      }
+    };
+
+    loadSections();
+  }, [user?.uid, addToast]);
+
+  // Generate Excel export
+  const exportToExcel = async () => {
+    if (!user?.uid || !dateRange.from || !dateRange.to) return;
 
     try {
-      setLoadingReports(true);
+      setExporting(true);
+      const daysInRange = eachDayOfInterval({ start: dateRange.from, end: dateRange.to });
 
-      // Get all sessions for this teacher (using optimized FirebaseService)
       const sessions = await FirebaseService.getAttendanceSessions({
-        teacherId: user.uid
+        teacherId: user.uid,
+        section: selectedSection === 'all' ? undefined : selectedSection,
+        dateRange: { start: dateRange.from, end: dateRange.to }
       });
 
-      // Filter by selected month if specified
-      let filteredSessions = sessions;
-      if (selectedMonth) {
-        const monthStart = startOfMonth(selectedMonth);
-        const monthEnd = endOfMonth(selectedMonth);
-
-        filteredSessions = sessions.filter(session => {
-          const sessionDate = session.createdAt?.toDate();
-          return sessionDate && sessionDate >= monthStart && sessionDate <= monthEnd;
-        });
+      if (sessions.length === 0) {
+        addToast({ title: "No Data", description: "No attendance sessions found", variant: "default" });
+        return;
       }
 
-      // Filter by section if specified
-      if (selectedSection !== 'all') {
-        filteredSessions = filteredSessions.filter(session => session.section === selectedSection);
-      }
+      const sectionsToProcess = selectedSection === 'all'
+        ? Array.from(new Set(sessions.map(s => s.section)))
+        : [selectedSection];
 
-      // Calculate attendance stats from session documents (no separate queries needed!)
-      const attendanceStats = {
-        totalPresent: 0,
-        totalAbsent: 0,
-        averageAttendance: 0
-      };
+      const workbook = XLSX.utils.book_new();
 
-      // Calculate section-wise stats from embedded data
-      const sectionStats: Record<string, { present: number; absent: number; total: number; percentage: number }> = {};
+      for (const section of sectionsToProcess) {
+        const sectionSessions = sessions.filter(s => s.section === section);
+        const students = await FirebaseService.getStudents(section);
 
-      filteredSessions.forEach(session => {
-        const present = session.presentCount || 0;
-        const absent = session.absentCount || 0;
-        const total = session.totalStudents || 0;
+        const sessionsByDate = sectionSessions.reduce((acc, session) => {
+          if (!acc[session.date]) acc[session.date] = {};
+          acc[session.date][session.session] = session;
+          return acc;
+        }, {} as Record<string, Record<string, any>>);
 
-        attendanceStats.totalPresent += present;
-        attendanceStats.totalAbsent += absent;
+        // Build headers with merging info
+        const headers = ['USN', 'Name'];
+        const subHeaders = ['', ''];
+        const merges = [];
+        let colIndex = 2;
 
-        if (!sectionStats[session.section]) {
-          sectionStats[session.section] = { present: 0, absent: 0, total: 0, percentage: 0 };
+        for (const day of daysInRange) {
+          const dateStr = format(day, 'yyyy-MM-dd');
+          const dayFormat = format(day, 'MM/dd');
+          const sessionsForDay = sessionsByDate[dateStr] || {};
+          const sessionTimes = Object.keys(sessionsForDay).sort();
+
+          if (sessionTimes.length === 0) continue;
+
+          if (sessionTimes.length === 1) {
+            headers.push(dayFormat);
+            subHeaders.push(sessionTimes[0]);
+            colIndex++;
+          } else {
+            // Merge header for multiple sessions
+            const startCol = colIndex;
+            const endCol = colIndex + sessionTimes.length - 1;
+            merges.push({ s: { r: 0, c: startCol }, e: { r: 0, c: endCol } });
+
+            headers.push(dayFormat);
+            sessionTimes.forEach((time, i) => {
+              if (i > 0) headers.push('');
+              subHeaders.push(time);
+            });
+            colIndex += sessionTimes.length;
+          }
         }
 
-        sectionStats[session.section].present += present;
-        sectionStats[session.section].absent += absent;
-        sectionStats[session.section].total += total;
+        headers.push('Total', 'Percentage');
+        subHeaders.push('', '');
+
+        // Build data with formulas
+        const wsData = [headers, subHeaders];
+
+        students.forEach((student, rowIndex) => {
+          const row = [student.usn, student.name];
+          const dataRow = rowIndex + 3; // Excel row (1-indexed, +2 for headers)
+
+          for (const day of daysInRange) {
+            const dateStr = format(day, 'yyyy-MM-dd');
+            const sessionsForDay = sessionsByDate[dateStr] || {};
+            const sessionTimes = Object.keys(sessionsForDay).sort();
+
+            if (sessionTimes.length === 0) continue;
+
+            sessionTimes.forEach(sessionTime => {
+              const session = sessionsForDay[sessionTime];
+              const studentRecord = session?.records?.find((r: any) => r.studentUsn === student.usn);
+              row.push(studentRecord?.isPresent ? 'P' : 'A');
+            });
+          }
+
+          // Add formulas for total and percentage
+          const attendanceStartCol = String.fromCharCode(67); // C
+          const attendanceEndCol = String.fromCharCode(66 + headers.length - 2); // Before Total column
+          row.push(
+            `=COUNTIF(${attendanceStartCol}${dataRow}:${attendanceEndCol}${dataRow},"P")`,
+            `=IF(COUNTA(${attendanceStartCol}${dataRow}:${attendanceEndCol}${dataRow})=0,0,COUNTIF(${attendanceStartCol}${dataRow}:${attendanceEndCol}${dataRow},"P")/COUNTA(${attendanceStartCol}${dataRow}:${attendanceEndCol}${dataRow}))`
+          );
+
+          wsData.push(row);
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+        // Apply merges
+        ws['!merges'] = merges;
+
+        // Apply styles
+        const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+        for (let R = 2; R <= range.e.r; R++) {
+          for (let C = 2; C <= range.e.c; C++) {
+            const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+            if (!ws[cellRef]) continue;
+
+            const isTotal = C >= range.e.c - 1;
+            const value = ws[cellRef].v;
+
+            ws[cellRef].s = {
+              fill: {
+                fgColor: {
+                  rgb: isTotal
+                    ? (typeof value === 'number' && value >= 0.7 ? '006400' : '8B0000')
+                    : (value === 'P' ? '006400' : '8B0000')
+                }
+              },
+              font: { color: { rgb: 'FFFFFF' } },
+              numFmt: isTotal && C === range.e.c ? '0%' : undefined
+            };
+          }
+        }
+
+        // Auto-fit columns
+        ws['!cols'] = headers.map((_, i) => ({
+          wch: i === 0 ? 15 : i === 1 ? 25 : i >= headers.length - 2 ? 12 : 8
+        }));
+
+        XLSX.utils.book_append_sheet(workbook, ws, section);
+      }
+
+      const fileName = `Attendance_Report_${format(dateRange.from, 'MMM_yyyy')}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+
+      addToast({
+        title: "Export Successful",
+        description: `Report exported as ${fileName}`,
+        variant: "success"
       });
 
-      // Calculate percentages
-      Object.keys(sectionStats).forEach(section => {
-        const stats = sectionStats[section];
-        stats.percentage = stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0;
-      });
-
-      attendanceStats.averageAttendance = filteredSessions.length > 0 ?
-        Math.round((attendanceStats.totalPresent / (attendanceStats.totalPresent + attendanceStats.totalAbsent)) * 100) : 0;
-
-      // Get unique sections
-      const uniqueSections = [...new Set(sessions.map(s => s.section))].filter(Boolean) as string[];
-
-      setSections(uniqueSections);
-      setReportData({
-        sessions: filteredSessions,
-        attendanceStats,
-        sectionStats
-      });
     } catch (error) {
-      console.error('Error loading report data:', error);
+      console.error('Error exporting report:', error);
+      addToast({
+        title: "Export Failed",
+        description: "Failed to export attendance report",
+        variant: "destructive"
+      });
     } finally {
-      setLoadingReports(false);
+      setExporting(false);
     }
-  };
-
-  const exportReport = () => {
-    // Simple CSV export
-    const csvData = [
-      ['Section', 'Date', 'Session', 'Present', 'Absent', 'Total', 'Percentage'],
-      ...reportData.sessions.map(session => [
-        session.section,
-        format(session.createdAt.toDate(), 'yyyy-MM-dd'),
-        session.session,
-        session.presentCount || 0,
-        session.absentCount || 0,
-        session.totalStudents || 0,
-        session.totalStudents > 0 ? Math.round(((session.presentCount || 0) / session.totalStudents) * 100) : 0
-      ])
-    ];
-
-    const csvContent = csvData.map(row => row.join(',')).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `attendance-report-${format(selectedMonth, 'yyyy-MM')}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
   };
 
   if (loading || loadingReports) {
@@ -190,13 +247,8 @@ export default function ReportsPage() {
         {/* Header */}
         <div className="text-center mb-6 md:mb-12">
           <div className="flex items-center justify-center mb-3 md:mb-6">
-            <div className="relative">
-              <div className="w-12 h-12 md:w-20 md:h-20 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-2xl flex items-center justify-center shadow-2xl shadow-cyber-yellow/25 animate-pulse">
-                <BarChart3 className="w-6 h-6 md:w-10 md:h-10 text-cyber-gray-900" />
-              </div>
-              <div className="absolute -top-1 -right-1 md:-top-2 md:-right-2 w-4 h-4 md:w-6 md:h-6 bg-cyber-yellow rounded-full flex items-center justify-center animate-bounce">
-                <Sparkles className="w-2 h-2 md:w-3 md:h-3 text-cyber-gray-900" />
-              </div>
+            <div className="w-12 h-12 md:w-20 md:h-20 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-2xl flex items-center justify-center shadow-2xl shadow-cyber-yellow/25">
+              <BarChart3 className="w-6 h-6 md:w-10 md:h-10 text-cyber-gray-900" />
             </div>
           </div>
 
@@ -217,186 +269,82 @@ export default function ReportsPage() {
 
         {/* Filters */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-6 mb-4 md:mb-8">
-          <Card variant="cyber" className="p-3 md:p-6">
+          <Card variant="cyber" className="p-3 md:p-6 relative overflow-visible z-10">
             <div className="space-y-2">
-              <label className="text-xs md:text-sm font-medium text-cyber-gray-700">Select Month</label>
-              <DatePicker
-                date={selectedMonth}
-                onDateChange={(date) => date && setSelectedMonth(date as Date)}
-                placeholder="Select month for report"
-              />
+              <label className="text-xs md:text-sm font-medium text-cyber-gray-700">Select Date Range</label>
+              <div className="relative z-50">
+                <DatePicker
+                  date={dateRange}
+                  onDateChange={(range) => {
+                    if (range && 'from' in range && range.from && range.to) {
+                      setDateRange({ from: range.from, to: range.to });
+                    }
+                  }}
+                  placeholder="Select date range for report"
+                  disabledDates={d => false}
+                  mode="range"
+                />
+              </div>
             </div>
           </Card>
 
-          <Card variant="cyber" className="p-3 md:p-6">
+          <Card variant="cyber" className="p-3 md:p-6 relative overflow-visible">
             <div className="space-y-2">
               <label className="text-xs md:text-sm font-medium text-cyber-gray-700">Filter by Section</label>
-              <Select value={selectedSection} onValueChange={setSelectedSection}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Sections" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Sections</SelectItem>
-                  {sections.map(section => (
-                    <SelectItem key={section} value={section}>{section}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="relative z-40">
+                <Select value={selectedSection} onValueChange={setSelectedSection}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Sections" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Sections</SelectItem>
+                    {sections.map(section => (
+                      <SelectItem key={section} value={section}>{section}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </Card>
 
           <Card variant="cyber" className="p-3 md:p-6">
             <div className="space-y-2">
               <label className="text-xs md:text-sm font-medium text-cyber-gray-700">Export Options</label>
-              <Button onClick={exportReport} className="w-full text-sm md:text-base">
-                <Download className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
-                Export CSV
+              <Button
+                onClick={exportToExcel}
+                disabled={exporting || sections.length === 0}
+                className="w-full text-sm md:text-base bg-gradient-to-r from-cyber-yellow to-cyber-yellow-dark text-cyber-gray-900 hover:shadow-lg"
+              >
+                {exporting ? (
+                  <>
+                    <div className="w-3 h-3 md:w-4 md:h-4 border-2 border-cyber-gray-900/30 border-t-cyber-gray-900 rounded-full animate-spin mr-1 md:mr-2" />
+                    Exporting...
+                  </>
+                ) : (
+                  <>
+                    <FileSpreadsheet className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
+                    Export Excel
+                  </>
+                )}
               </Button>
             </div>
           </Card>
         </div>
 
-        {/* Overview Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-6 mb-4 md:mb-12">
-          <Card variant="cyber" className="text-center p-3 md:p-6">
-            <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center mx-auto mb-1 md:mb-2">
-              <CalendarIcon className="w-4 h-4 md:w-5 md:h-5 text-white" />
-            </div>
-            <div className="text-lg md:text-2xl font-bold text-cyber-gray-900 mb-1">{reportData.sessions.length}</div>
-            <div className="text-xs text-cyber-gray-600">Total Sessions</div>
-          </Card>
-
-          <Card variant="cyber" className="text-center p-3 md:p-6">
-            <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center mx-auto mb-1 md:mb-2">
-              <Users className="w-4 h-4 md:w-5 md:h-5 text-white" />
-            </div>
-            <div className="text-lg md:text-2xl font-bold text-cyber-gray-900 mb-1">{reportData.attendanceStats.totalPresent}</div>
-            <div className="text-xs text-cyber-gray-600">Total Present</div>
-          </Card>
-
-          <Card variant="cyber" className="text-center p-3 md:p-6">
-            <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center mx-auto mb-1 md:mb-2">
-              <Activity className="w-4 h-4 md:w-5 md:h-5 text-white" />
-            </div>
-            <div className="text-lg md:text-2xl font-bold text-cyber-gray-900 mb-1">{reportData.attendanceStats.totalAbsent}</div>
-            <div className="text-xs text-cyber-gray-600">Total Absent</div>
-          </Card>
-
-          <Card variant="cyber" className="text-center p-3 md:p-6">
-            <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-lg flex items-center justify-center mx-auto mb-1 md:mb-2">
-              <TrendingUp className="w-4 h-4 md:w-5 md:h-5 text-cyber-gray-900" />
-            </div>
-            <div className="text-lg md:text-2xl font-bold text-cyber-gray-900 mb-1">{reportData.attendanceStats.averageAttendance}%</div>
-            <div className="text-xs text-cyber-gray-600">Avg Attendance</div>
-          </Card>
-        </div>
-
-        {/* Section Performance */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-8 mb-4 md:mb-12">
-          <Card variant="cyber" className="p-3 md:p-6">
-            <h3 className="text-lg md:text-xl font-bold text-cyber-gray-900 mb-3 md:mb-6 flex items-center gap-2">
-              <PieChart className="w-4 h-4 md:w-5 md:h-5 text-cyber-yellow" />
-              Section Performance
-            </h3>
-
-            <div className="space-y-3 md:space-y-4">
-              {Object.entries(reportData.sectionStats).map(([section, stats]) => (
-                <div key={section} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-cyber-gray-900 text-sm md:text-base">{section}</span>
-                    <span className="text-xs md:text-sm font-medium text-cyber-gray-600">{stats.percentage}%</span>
-                  </div>
-                  <div className="w-full bg-cyber-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-gradient-to-r from-cyber-yellow to-cyber-yellow-dark h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${stats.percentage}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-xs text-cyber-gray-500">
-                    <span>Present: {stats.present}</span>
-                    <span>Absent: {stats.absent}</span>
-                    <span>Total: {stats.total}</span>
-                  </div>
-                </div>
-              ))}
-
-              {Object.keys(reportData.sectionStats).length === 0 && (
-                <div className="text-center py-4 md:py-8">
-                  <BarChart3 className="w-8 h-8 md:w-12 md:h-12 text-cyber-gray-400 mx-auto mb-2 md:mb-4" />
-                  <p className="text-xs md:text-sm text-cyber-gray-600">No data available</p>
-                  <p className="text-xs text-cyber-gray-500">Try selecting a different month</p>
-                </div>
-              )}
-            </div>
-          </Card>
-
-          <Card variant="cyber" className="p-3 md:p-6">
-            <h3 className="text-lg md:text-xl font-bold text-cyber-gray-900 mb-3 md:mb-6 flex items-center gap-2">
-              <FileText className="w-4 h-4 md:w-5 md:h-5 text-cyber-yellow" />
-              Recent Sessions
-            </h3>
-
-            <div className="space-y-2 md:space-y-4">
-              {reportData.sessions.slice(0, 5).map((session: any) => {
-                const sessionDate = format(session.createdAt.toDate(), 'yyyy-MM-dd');
-                const sessionUrl = `/attendance/${encodeURIComponent(session.section)}?date=${sessionDate}&time=${session.session}`;
-                
-                return (
-                  <div 
-                    key={session.id} 
-                    className="flex items-center justify-between p-2 md:p-4 bg-cyber-gray-50 rounded-xl hover:bg-cyber-gray-100 cursor-pointer transition-colors"
-                    onClick={() => router.push(sessionUrl)}
-                  >
-                    <div>
-                      <p className="font-semibold text-cyber-gray-900 text-sm md:text-base">{session.section}</p>
-                      <p className="text-xs md:text-sm text-cyber-gray-600">
-                        {format(session.createdAt.toDate(), 'MMM dd, yyyy')} • {session.session}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs md:text-sm font-medium text-cyber-gray-900">
-                        {session.presentCount || 0}/{session.totalStudents || 0}
-                      </p>
-                      <p className="text-xs text-cyber-gray-600">
-                        {session.totalStudents > 0 ? Math.round(((session.presentCount || 0) / session.totalStudents) * 100) : 0}% attendance
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {reportData.sessions.length === 0 && (
-                <div className="text-center py-4 md:py-8">
-                  <CalendarIcon className="w-8 h-8 md:w-12 md:h-12 text-cyber-gray-400 mx-auto mb-2 md:mb-4" />
-                  <p className="text-xs md:text-sm text-cyber-gray-600">No sessions found</p>
-                  <p className="text-xs text-cyber-gray-500">No attendance sessions for the selected period</p>
-                </div>
-              )}
-            </div>
-          </Card>
-        </div>
-
-        {/* Insights */}
-        <Card variant="glass" className="text-center p-4 md:p-6">
-          <div className="max-w-2xl mx-auto">
-            <div className="w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-2xl flex items-center justify-center mx-auto mb-3 md:mb-6">
-              <Target className="w-6 h-6 md:w-8 md:h-8 text-cyber-gray-900" />
-            </div>
-            <h3 className="text-lg md:text-2xl font-bold text-cyber-gray-900 mb-2 md:mb-4">
-              Data-Driven Insights 📊
-            </h3>
-            <p className="text-sm md:text-base text-cyber-gray-600 mb-3 md:mb-6">
-              Use these reports to identify attendance patterns, track student engagement, and make informed decisions about your teaching approach.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-2 md:gap-4 justify-center">
-              <Button onClick={() => router.push('/attendance')} className="text-sm md:text-base">
-                Take New Session
-              </Button>
-              <Button variant="outline" onClick={() => router.push('/dashboard')} className="text-sm md:text-base">
-                Back to Dashboard
-              </Button>
-            </div>
+        <Card variant="cyber" className="p-6 text-center flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-cyber-gray-50 to-cyber-gray-100 border-2 border-dashed border-cyber-yellow/40">
+          <div className="flex items-center justify-center mb-2">
+            <Calendar className="w-8 h-8 text-cyber-yellow-dark animate-pulse" />
           </div>
+          <h2 className="text-lg md:text-2xl font-semibold text-cyber-gray-900 mb-1">
+            Work In Progress
+          </h2>
+          <p className="text-sm md:text-base text-cyber-gray-700 mb-2">
+            More analytics and visualizations coming soon.<br />
+            Stay tuned for updates!
+          </p>
+          <span className="inline-block px-3 py-1 rounded-full bg-cyber-yellow/20 text-cyber-yellow-dark text-xs font-medium">
+            Last updated: {format(new Date(), 'MMM dd, yyyy')}
+          </span>
         </Card>
       </div>
     </div>
