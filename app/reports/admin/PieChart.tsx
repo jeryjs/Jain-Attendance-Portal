@@ -1,7 +1,14 @@
 import { Card } from "@/components/ui/card";
 
+interface PieChartData {
+  name: string;
+  value: number;
+  color: string;
+  count: number;
+}
+
 const PieChart = ({ data, title, selectedSessions, onSessionSelect }: {
-  data: Array<{ name: string; value: number; color: string; count: number }>,
+  data: PieChartData[],
   title: string,
   selectedSessions: string[],
   onSessionSelect: (session: string) => void

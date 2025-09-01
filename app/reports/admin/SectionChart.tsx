@@ -2,36 +2,22 @@ import { Card } from "@/components/ui/card";
 import { Tooltip } from "@/components/ui/tooltip";
 import { SESSION_OPTIONS } from "@/lib/types";
 import { getProgramName } from "@/lib/utils";
+import { SessionStat, SectionData, SectionSession } from "./types";
+import { sortSessionsByTime, parseSessionTime } from "./utils";
 
 const SectionChart = ({ data, title, sessionStats, onSectionSelect }: {
-  data: Array<{ name: string; value: number; color: string; sessions: any[] }>,
+  data: SectionData[],
   title: string,
-  sessionStats: any[],
+  sessionStats: SessionStat[],
   onSectionSelect: (section: string) => void
 }) => {
-  // Parse session time and calculate dependencies
-  const parseSessionTime = (session: string) => {
-    const [start, end] = session.split('-');
-    return {
-      start: parseFloat(start.replace('.', ':')),
-      end: parseFloat(end.replace('.', ':')),
-      session
-    };
-  };
+  const sortedSessionStats = sortSessionsByTime(sessionStats);
 
-  // Sort sessions by start time
-  const sortedSessionStats = [...sessionStats].sort((a, b) => {
-    const aTime = parseSessionTime(a.name);
-    const bTime = parseSessionTime(b.name);
-    return aTime.start - bTime.start;
-  });
-
-  // Calculate session dependencies and widths
-  const getSessionLayout = (sectionSessions: any[]) => {
+  // Calculate session dependencies and widths - SectionChart specific logic
+  const getSessionLayout = (sectionSessions: SectionSession[]): { session: string; width: number; color: string; attendance: number; present: number; total: number }[] => {
     const availableSessions = sectionSessions.filter(s => s.count > 0);
     const sessionTimes = availableSessions.map(s => parseSessionTime(s.session));
 
-    // Group sessions by overlaps
     const layout: { session: string; width: number; color: string; attendance: number; present: number; total: number }[] = [];
     const processed = new Set<string>();
 
@@ -94,7 +80,7 @@ const SectionChart = ({ data, title, sessionStats, onSectionSelect }: {
     <Card variant="cyber" className="p-6">
       <h3 className="text-lg font-semibold text-cyber-gray-900 mb-4">{title}</h3>
       <div className="my-4 flex flex-wrap gap-2">
-        {sortedSessionStats.map((session: any, idx: number) => {
+        {sortedSessionStats.map((session, idx) => {
           const option = SESSION_OPTIONS.find(opt => opt.key === session.name);
           const label = option?.value.split(' to ')[0] + (option?.value.includes('(2hrs)') ? ' (2hr)' : '');
           return (
@@ -116,7 +102,7 @@ const SectionChart = ({ data, title, sessionStats, onSectionSelect }: {
                 <Tooltip content={getProgramName(item.name) || item.name} side="right" delay={10}>
                   <div className="min-w-0 flex-shrink-0 w-20" onClick={() => onSectionSelect(item.name)} style={{ cursor: 'pointer' }}>
                     <span className="text-sm font-medium text-cyber-gray-700">
-                      {item.name.replace('CSE P', 'P').replace('GEN AI', 'GenAI').replace('CYBER SECURITY', 'CS')} <span className="text-cyber-gray-400 font-normal">({Math.max(...item.sessions.map(s => s.total), 0)})</span>
+                      {item.name.replace('CSE P', 'P').replace('GEN AI', 'GenAI').replace('CYBER SECURITY', 'CS')} <span className="text-cyber-gray-400 font-normal">({Math.max(...item.sessions.map((s: SectionSession) => s.total), 0)})</span>
                     </span>
                   </div>
                 </Tooltip>

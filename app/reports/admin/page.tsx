@@ -18,52 +18,27 @@ import {
   GraduationCap,
   Percent,
   RefreshCw,
-  Users
+  Users,
+  type LucideIcon
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import SectionChart from './SectionChart';
 import PieChart from './PieChart';
-
-type AdminStats = {
-  sectionStats: Array<{
-    name: string;
-    value: number;
-    color: string;
-    totalSessions: number;
-    totalStudents: number;
-    totalPresent: number;
-    sessions: Array<{
-      session: string;
-      count: number;
-      present: number;
-      total: number;
-      attendance: number;
-    }>;
-  }>;
-  sessionStats: Array<{
-    name: string;
-    color: string;
-    count: number;
-  }>;
-  sessionPieData: Array<{
-    name: string;
-    value: number;
-    color: string;
-    count: number;
-  }>;
-  totalSessions: number;
-  totalStudents: number;
-  totalUniqueStudents: number;
-  averageAttendance: number;
-  recentSessions: any[];
-  uniqueSections: number;
-};
+import { AdminStats } from './types';
+import {
+  calculateSessionStats,
+  calculateSectionStats,
+  filterSectionStats,
+  calculateSessionPieData,
+  calculateOverallStats,
+  getRecentSessions
+} from './utils';
 
 const StatsCard = ({ title, value, icon: Icon, color, subtitle }: {
   title: string;
   value: string | number;
-  icon: any;
+  icon: LucideIcon;
   color: string;
   subtitle?: string;
 }) => (
@@ -125,109 +100,25 @@ export default function AdminReportsPage() {
         const uniqueSections = Array.from(new Set(sessions.map(s => s.section))).sort();
         setSections(uniqueSections);
 
-        // Section-wise attendance stats with session breakdown
         const sessionNames = Array.from(new Set(sessions.map(s => s.session))).sort();
-        const sessionColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
-
-        const sessionStats = sessionNames.map((session, idx) => ({
-          name: session,
-          color: sessionColors[idx % sessionColors.length],
-          count: sessions.filter(s => s.session === session).length
-        }));
-
-        const sectionStats = uniqueSections.map(section => {
-          const sectionSessions = sessions.filter(s => s.section === section);
-          const sectionStudents = students.filter(s => s.section === section);
-          const totalStudents = sectionStudents.length;
-
-          // Calculate session breakdown for this section
-          const sessionBreakdown = sessionNames.map(sessionName => {
-            const sessionData = sectionSessions.filter(s => s.session === sessionName);
-            const totalSessions = sessionData.length;
-            const totalPresent = sessionData.reduce((sum, s) => sum + (s.presentCount || 0), 0);
-            const totalPossible = totalSessions * totalStudents;
-
-            return {
-              session: sessionName,
-              count: totalSessions,
-              present: totalPresent,
-              total: totalPossible,
-              attendance: totalPossible > 0 ? Math.round((totalPresent / totalPossible) * 100) : 0
-            };
-          });
-
-          const totalSessions = sectionSessions.length;
-          const totalPossibleAttendance = totalSessions * totalStudents;
-          const totalPresent = sectionSessions.reduce((sum, s) => sum + (s.presentCount || 0), 0);
-
-          const attendanceRate = totalPossibleAttendance > 0
-            ? Math.round((totalPresent / totalPossibleAttendance) * 100)
-            : 0;
-
-          return {
-            name: section,
-            value: attendanceRate,
-            color: attendanceRate >= 75 ? '#22c55e' : attendanceRate >= 60 ? '#f59e0b' : '#ef4444',
-            totalSessions,
-            totalStudents,
-            totalPresent,
-            sessions: sessionBreakdown
-          };
-        });
+        const sessionStats = calculateSessionStats(sessions);
+        const sectionStats = calculateSectionStats(sessions, students, sessionNames);
 
         // Filter data based on selected sessions
         const filteredSessions = selectedSessions.length > 0
           ? sessions.filter(s => selectedSessions.includes(s.session))
           : sessions;
 
-        const filteredSectionStats = selectedSessions.length > 0
-          ? sectionStats.map(section => {
-            const filteredSessionBreakdown = section.sessions.filter(s => selectedSessions.includes(s.session));
-            const totalFiltered = filteredSessionBreakdown.reduce((sum, s) => sum + s.total, 0);
-            const presentFiltered = filteredSessionBreakdown.reduce((sum, s) => sum + s.present, 0);
-            const attendanceRate = totalFiltered > 0 ? Math.round((presentFiltered / totalFiltered) * 100) : 0;
-
-            return {
-              ...section,
-              value: attendanceRate,
-              sessions: filteredSessionBreakdown
-            };
-          })
-          : sectionStats;
-
-        // Session-wise pie chart data
-        const sessionPieData = sessionStats.map(session => {
-          const sessionData = sessions.filter(s => s.session === session.name);
-          const totalPresent = sessionData.reduce((sum, s) => sum + (s.presentCount || 0), 0);
-          return {
-            name: session.name,
-            value: totalPresent,
-            color: session.color,
-            count: sessionData.length
-          };
-        });
-
-        // Overall stats (filtered)
-        const totalSessions = filteredSessions.length;
-        const totalStudents = students.length;
-        const totalUniqueStudents = new Set(students.map(s => s.usn)).size;
-        const averageAttendance = filteredSectionStats.length > 0
-          ? Math.round(filteredSectionStats.reduce((sum, s) => sum + s.value, 0) / filteredSectionStats.length)
-          : 0;
-
-        // Recent activity
-        const recentSessions = filteredSessions
-          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-          .slice(0, 20);
+        const filteredSectionStats = filterSectionStats(sectionStats, selectedSessions);
+        const sessionPieData = calculateSessionPieData(sessions, sessionStats);
+        const overallStats = calculateOverallStats(filteredSessions, students, filteredSectionStats);
+        const recentSessions = getRecentSessions(filteredSessions);
 
         setAdminStats({
           sectionStats: filteredSectionStats,
           sessionStats,
           sessionPieData,
-          totalSessions,
-          totalStudents,
-          totalUniqueStudents,
-          averageAttendance,
+          ...overallStats,
           recentSessions,
           uniqueSections: uniqueSections.length
         });
@@ -458,7 +349,7 @@ export default function AdminReportsPage() {
                 )}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {adminStats.recentSessions.map((session: any, index: number) => (
+                {adminStats.recentSessions.map((session, index: number) => (
                   <div key={index} className="p-3 bg-cyber-gray-50 rounded-lg">
                     <div className="flex items-center justify-between mb-1">
                       <p className="font-medium text-cyber-gray-900">{session.section}</p>
