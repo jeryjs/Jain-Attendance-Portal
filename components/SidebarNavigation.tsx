@@ -19,22 +19,11 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, getReportsRoute } from '@/lib/utils';
 import { User as FirebaseUser } from 'firebase/auth';
+import { navItems as navigationItems } from './Navigation';
 
-interface NavItem {
-  label: string;
-  href: string;
-  icon: React.ComponentType<{ className?: string }>;
-  adminOnly?: boolean;
-}
-
-const navItems: NavItem[] = [
-  { label: 'Dashboard', href: '/dashboard', icon: Home },
-  { label: 'Attendance', href: '/attendance', icon: Calendar },
-  { label: 'Reports', href: '/reports', icon: BarChart3 },
-  // { label: 'Settings', href: '/settings', icon: Settings, adminOnly: true },
-];
+const navItems = navigationItems;
 
 export default function SidebarNavigation() {
   const { user, logout, isAdmin, isTeacher } = useAuth();

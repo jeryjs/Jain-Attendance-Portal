@@ -17,7 +17,7 @@ import {
   GraduationCap,
   ChevronDown
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, getReportsRoute } from '@/lib/utils';
 import SidebarNavigation from './SidebarNavigation';
 
 interface NavItem {
@@ -27,10 +27,10 @@ interface NavItem {
   adminOnly?: boolean;
 }
 
-const navItems: NavItem[] = [
+export const navItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: Home },
   { label: 'Attendance', href: '/attendance', icon: Calendar },
-  { label: 'Reports', href: '/reports', icon: BarChart3 },
+  { label: 'Reports', href: getReportsRoute(), icon: BarChart3 },
   // { label: 'Settings', href: '/settings', icon: Settings, adminOnly: true },
 ];
 

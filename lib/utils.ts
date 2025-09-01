@@ -9,6 +9,12 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+export const getReportsRoute = () => {
+  return localStorage.getItem('defaultToAdminView') == 'true'
+    ? '/reports/admin'
+    : '/reports'
+}
+
 interface ExportOptions {
   userId: string;
   dateRange: DateRange;
@@ -16,8 +22,6 @@ interface ExportOptions {
   sessions: any[];
   getStudents: (section: string) => Promise<any[]>;
 }
-
-
 export async function exportToExcel({
   userId,
   dateRange,

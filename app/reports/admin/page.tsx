@@ -427,7 +427,7 @@ export default function AdminReportsPage() {
   }
 
   return (
-    <div className="min-h-screen p-2 md:p-6 bg-gradient-to-br from-purple-50 via-white to-indigo-50">
+    <div className="min-h-screen p-2 md:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -620,6 +620,19 @@ export default function AdminReportsPage() {
             </Card>
           </>
         )}
+
+        {/* WIP - Fancy notice */}
+        <Card variant="cyber" className="p-6 mt-8 border-2 border-dashed border-orange-300 bg-orange-50/50">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Activity className="w-8 h-8 text-orange-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-orange-900 mb-2">Page Under Development</h3>
+            <p className="text-orange-700">
+              This admin dashboard is still being actively developed. More features and improvements coming soon.
+            </p>
+          </div>
+        </Card>
       </div>
     </div>
   );
