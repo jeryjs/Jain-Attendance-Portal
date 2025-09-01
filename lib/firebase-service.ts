@@ -6,6 +6,7 @@ import {
   getDoc,
   getDocs,
   limit,
+  orderBy,
   query,
   setDoc,
   Timestamp,
@@ -345,7 +346,7 @@ export class FirebaseService {
 
     if (!isCacheValid || refetch) {
       console.log('Fetching students from Firestore...');
-      students = await getDocs(query(collection(db, 'students'))).then(snapshot =>
+      students = await getDocs(query(collection(db, 'students'), orderBy('usn'))).then(snapshot =>
         snapshot.docs.map(doc => ({
           id: doc.id,
           name: doc.data().name,
@@ -353,9 +354,6 @@ export class FirebaseService {
           section: doc.data().section
         }))
       );
-      // Sort students by USN
-      students.sort((a, b) => a.usn.localeCompare(b.usn));
-      // Store both students and timestamp in a single object
       localStorage.setItem(CACHE_KEY, JSON.stringify({ students, timestamp: now }));
     } else {
       students = cacheObj.students || [];
@@ -386,8 +384,9 @@ export class FirebaseService {
 
     if (!isCacheValid || refetch) {
       console.log('Fetching attendance sessions from Firestore...');
-      sessions = await this.getAttendanceSessions();
-      // Store both sessions and timestamp in a single object
+      sessions = await getDocs(query(collection(db, 'attendance_sessions'), orderBy('date'))).then(snapshot =>
+        snapshot.docs.map(doc => ({ id: doc.id, ...doc.data()}))
+      );
       localStorage.setItem(CACHE_KEY, JSON.stringify({ sessions, timestamp: now }));
     } else {
       sessions = cacheObj.sessions || [];
