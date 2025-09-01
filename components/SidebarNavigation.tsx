@@ -1,29 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
+import { NAV_ITEMS } from '@/lib/types';
+import { cn } from '@/lib/utils';
 import {
-  Home,
-  Calendar,
-  BarChart3,
-  Settings,
-  Menu,
-  X,
-  LogOut,
-  User,
-  Shield,
-  GraduationCap,
   ChevronDown,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  GraduationCap,
+  LogOut,
+  Shield,
+  User
 } from 'lucide-react';
-import { cn, getReportsRoute } from '@/lib/utils';
-import { User as FirebaseUser } from 'firebase/auth';
-import { navItems as navigationItems } from './Navigation';
-
-const navItems = navigationItems;
+import { usePathname, useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 export default function SidebarNavigation() {
   const { user, logout, isAdmin, isTeacher } = useAuth();
@@ -105,16 +96,17 @@ export default function SidebarNavigation() {
         {/* Navigation Items */}
         <nav className="flex-1 p-3">
           <div className="space-y-1">
-            {navItems
+            {NAV_ITEMS
               .filter(item => !item.adminOnly || isAdmin)
               .map((item) => {
                 const Icon = item.icon;
-                const active = isActive(item.href);
+                const href = typeof item.href === 'function' ? item.href() : item.href;
+                const active = isActive(href);
                 return (
                   <Button
-                    key={item.href}
+                    key={href}
                     variant="ghost"
-                    onClick={() => router.push(item.href)}
+                    onClick={() => router.push(href)}
                     className={cn(
                       "w-full transition-all duration-300 group",
                       isCollapsed ? "justify-center p-2" : "justify-start p-3",

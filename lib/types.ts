@@ -1,3 +1,6 @@
+import { Home, Calendar, BarChart3 } from "lucide-react";
+import { getReportsRoute } from "./utils";
+
 export interface Program {
   id: string;
   name: string;
@@ -88,3 +91,16 @@ export const SECTION_MAPPINGS: { [key: string]: string } = {
   IOT: 'Internet of Things in association',
   ISE: 'Information Science and Engineering'
 };
+
+interface NavItem {
+  label: string;
+  href: string | (() => string);
+  icon: React.ComponentType<{ className?: string }>;
+  adminOnly?: boolean;
+}
+export const NAV_ITEMS: NavItem[] = [
+  { label: 'Dashboard', href: '/dashboard', icon: Home },
+  { label: 'Attendance', href: '/attendance', icon: Calendar },
+  { label: 'Reports', href: () => getReportsRoute(), icon: BarChart3 },
+  // { label: 'Settings', href: '/settings', icon: Settings, adminOnly: true },
+];

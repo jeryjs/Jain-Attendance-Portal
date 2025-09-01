@@ -19,20 +19,7 @@ import {
 } from 'lucide-react';
 import { cn, getReportsRoute } from '@/lib/utils';
 import SidebarNavigation from './SidebarNavigation';
-
-interface NavItem {
-  label: string;
-  href: string;
-  icon: React.ComponentType<{ className?: string }>;
-  adminOnly?: boolean;
-}
-
-export const navItems: NavItem[] = [
-  { label: 'Dashboard', href: '/dashboard', icon: Home },
-  { label: 'Attendance', href: '/attendance', icon: Calendar },
-  { label: 'Reports', href: getReportsRoute(), icon: BarChart3 },
-  // { label: 'Settings', href: '/settings', icon: Settings, adminOnly: true },
-];
+import { NAV_ITEMS } from '@/lib/types';
 
 export default function Navigation() {
   const { user, logout, isAdmin, isTeacher } = useAuth();
@@ -118,16 +105,17 @@ export default function Navigation() {
               </div>
 
               <div className="space-y-2">
-                {navItems
+                {NAV_ITEMS
                   .filter(item => !item.adminOnly || isAdmin)
                   .map((item) => {
                     const Icon = item.icon;
-                    const active = isActive(item.href);
+                    const href = typeof item.href === 'function' ? item.href() : item.href;
+                    const active = isActive(href);
                     return (
                       <Button
-                        key={item.href}
+                        key={href}
                         variant="ghost"
-                        onClick={() => router.push(item.href)}
+                        onClick={() => router.push(href)}
                         className={cn(
                           "w-full justify-start p-4 rounded-xl transition-all duration-300",
                           active
