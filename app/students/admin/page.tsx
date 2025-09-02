@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { FirebaseService } from '@/lib/firebase-service';
-import { SECTION_MAPPINGS, Student } from '@/lib/types';
+import { SECTION_MAPPINGS, SECTIONS, Student } from '@/lib/types';
 import { getProgramName } from '@/lib/utils';
 import { DataGrid, GridActionsCellItem, GridColDef, GridRowId, GridRowParams } from '@mui/x-data-grid';
 import { format } from 'date-fns';
@@ -494,6 +494,7 @@ export default function AdminStudentsPage() {
         {showForm && (
           <StudentForm
             student={editingStudent}
+            sections={SECTIONS}
             onSubmit={editingStudent ? 
               (studentData: Student | Omit<Student, 'id'>) => handleUpdateStudent(studentData as Student) : 
               handleAddStudent

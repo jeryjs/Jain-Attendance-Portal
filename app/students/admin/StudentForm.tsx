@@ -3,30 +3,24 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Student, SECTION_MAPPINGS } from '@/lib/types';
+import { getProgramName } from '@/lib/utils';
 import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface StudentFormProps {
   student?: Student | null;
+  sections: string[];
   onSubmit: (student: Student | Omit<Student, 'id'>) => void;
   onCancel: () => void;
 }
 
-export default function StudentForm({ student, onSubmit, onCancel }: StudentFormProps) {
-  const [formData, setFormData] = useState({
-    name: '',
-    usn: '',
-    section: ''
-  });
+export default function StudentForm({ student, sections, onSubmit, onCancel }: StudentFormProps) {
+  const [formData, setFormData] = useState({ name: '', usn: '', section: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (student) {
-      setFormData({
-        name: student.name,
-        usn: student.usn,
-        section: student.section
-      });
+      setFormData({ name: student.name, usn: student.usn, section: student.section });
     }
   }, [student]);
 
@@ -64,6 +58,11 @@ export default function StudentForm({ student, onSubmit, onCancel }: StudentForm
   };
 
   const handleInputChange = (field: string, value: string) => {
+    // Prevent overriding section if it's being set to empty during initialization
+    if (field === 'section' && value === '' && formData.section !== '') {
+      return;
+    }
+
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
@@ -115,12 +114,7 @@ export default function StudentForm({ student, onSubmit, onCancel }: StudentForm
               placeholder="e.g., 22CS001"
               className={errors.usn ? 'border-red-300 focus:border-red-500' : ''}
             />
-            {errors.usn && (
-              <p className="text-red-600 text-sm mt-1">{errors.usn}</p>
-            )}
-            <p className="text-gray-500 text-xs mt-1">
-              Format: Year + Branch Code + Roll Number (e.g., 22CS001)
-            </p>
+            {errors.usn && (<p className="text-red-600 text-sm mt-1">{errors.usn}</p>)}
           </div>
 
           <div>
@@ -128,6 +122,7 @@ export default function StudentForm({ student, onSubmit, onCancel }: StudentForm
               Section *
             </label>
             <Select
+              key={student?.id || 'new'}
               value={formData.section}
               onValueChange={(value) => handleInputChange('section', value)}
             >
@@ -135,9 +130,9 @@ export default function StudentForm({ student, onSubmit, onCancel }: StudentForm
                 <SelectValue placeholder="Select a section" />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(SECTION_MAPPINGS).map(([key, value]) => (
-                  <SelectItem key={key} value={key}>
-                    {key} - {value}
+                {sections.map((section) => (
+                  <SelectItem key={section} value={section}>
+                    {section} - {getProgramName(section)}
                   </SelectItem>
                 ))}
               </SelectContent>

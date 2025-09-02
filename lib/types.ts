@@ -90,6 +90,8 @@ export const SECTION_MAPPINGS: { [key: string]: string } = {
   ISE: 'Information Science and Engineering'
 };
 
+export const SECTIONS: string[] = ['AI', 'AIDD', 'AIDE A', 'AIDE B', 'AIML A', 'AIML B', 'AIML C', 'AIML D', 'AIML E', 'ANE', 'ASE', 'BCT', 'CE', 'CPS', 'CSBS', 'CSE A', 'CSE B', 'CSE PWC A', 'CSE PWC B', 'CTIS', 'CTMA', 'CYBER SECURITY', 'DS', 'ECE', 'EEE', 'GEN AI A', 'GEN AI B', 'IOT', 'ISE', 'ME', 'SE'];
+
 interface NavItem {
   label: string;
   href: string | (() => string);
