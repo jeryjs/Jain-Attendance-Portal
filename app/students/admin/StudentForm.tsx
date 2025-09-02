@@ -105,7 +105,7 @@ export default function StudentForm({ student, sections, onSubmit, onCancel }: S
 
           <div>
             <label className="block text-sm font-medium text-cyber-gray-700 mb-1">
-              USN *
+              Application Number *
             </label>
             <Input
               type="text"

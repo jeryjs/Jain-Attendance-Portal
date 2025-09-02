@@ -239,7 +239,7 @@ export default function AdminStudentsPage() {
   // Export functionality
   const handleExportToCSV = useCallback(() => {
     const csvContent = [
-      ['USN', 'Name', 'Section', 'Program'],
+      ['Application Number', 'Name', 'Section', 'Program'],
       ...students.map(student => [
         student.usn,
         student.name,
@@ -267,7 +267,7 @@ export default function AdminStudentsPage() {
   const columns: GridColDef[] = useMemo(() => [
     {
       field: 'usn',
-      headerName: 'USN',
+      headerName: 'Application Number',
       width: 150,
       fontFamily: 'monospace',
     },
