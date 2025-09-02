@@ -149,7 +149,7 @@ export default function SectionAttendancePage() {
       const sessions = await FirebaseService.getAttendanceSessions({
         section,
         teacherId: isAdminView ? undefined : user?.uid
-      }).then(res => res.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+      }).then(res => res.sort((a, b) => b.updatedAt.toDate().getTime() - a.updatedAt.toDate().getTime()));
       setSectionSessions(sessions);
     } catch (error) {
       console.error('Error loading section sessions:', error);
