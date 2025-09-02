@@ -181,8 +181,7 @@ export default function DashboardPage() {
             {stats.recentSessions.length > 0 ? (
               <div className="space-y-2 md:space-y-4">
                 {stats.recentSessions.slice(0, 3).map((session: any) => {
-                  const sessionDate = format(session.createdAt.toDate(), 'yyyy-MM-dd');
-                  const sessionUrl = `/attendance/${encodeURIComponent(session.section)}?date=${sessionDate}&time=${session.session}`;
+                  const sessionUrl = `/attendance/${encodeURIComponent(session.section)}?date=${session.date}&time=${session.session}`;
 
                   return (
                     <div
@@ -192,7 +191,7 @@ export default function DashboardPage() {
                     >
                       <div>
                         <p className="font-semibold text-xs md:text-sm text-cyber-gray-900">{session.section}</p>
-                        <p className="text-xs text-cyber-gray-600">{format(session.createdAt.toDate(), 'MMM dd')}</p>
+                        <p className="text-xs text-cyber-gray-600">{format(new Date(session.date), 'MMM dd')}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-xs md:text-sm font-medium text-cyber-gray-900">{session.session}</p>

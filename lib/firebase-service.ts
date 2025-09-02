@@ -17,6 +17,7 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { AttendanceSession, Student } from './types';
+import { parseSessionTime } from '@/app/reports/admin/utils';
 
 // Cache for student data
 const studentsCache = new Map<string, { data: any[], timestamp: number }>();
@@ -163,11 +164,11 @@ export class FirebaseService {
     // Check cache first
     const cached = sessionsCache.get(cacheKey);
     if (cached && (now - cached.timestamp) < CACHE_DURATION) {
-      return cached.data;
+      return cached.data as AttendanceSession[];
     }
 
     try {
-      let q = query(collection(db, 'attendance_sessions'), limit(count));
+      let q = query(collection(db, 'attendance_sessions'), limit(count), orderBy('date', 'desc'));
 
       if (filters?.section) {
         q = query(q, where('section', '==', filters.section));
@@ -181,7 +182,7 @@ export class FirebaseService {
       const sessions = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      }));
+      })) as AttendanceSession[];
 
       // Cache the result
       sessionsCache.set(cacheKey, {
@@ -221,7 +222,7 @@ export class FirebaseService {
 
       // Get recent sessions
       const recentSessions = sessions
-        .sort((a, b) => b.createdAt?.toDate() - a.createdAt?.toDate())
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         .slice(0, 5);
 
       // Calculate weekly stats (last 7 days)
@@ -229,7 +230,7 @@ export class FirebaseService {
       weekAgo.setDate(weekAgo.getDate() - 7);
 
       const weeklySessions = sessions.filter(s =>
-        s.createdAt?.toDate() >= weekAgo
+        new Date(s.date) >= weekAgo
       );
 
       const weeklyStats = {

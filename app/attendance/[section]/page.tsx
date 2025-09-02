@@ -149,7 +149,7 @@ export default function SectionAttendancePage() {
       const sessions = await FirebaseService.getAttendanceSessions({
         section,
         teacherId: isAdminView ? undefined : user?.uid
-      }).then(res => res.sort((a, b) => b.createdAt.toDate().getTime() - a.createdAt.toDate().getTime()));
+      }).then(res => res.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       setSectionSessions(sessions);
     } catch (error) {
       console.error('Error loading section sessions:', error);
@@ -837,9 +837,7 @@ export default function SectionAttendancePage() {
                   </h3>
                   <div className="space-y-3">
                     {sectionSessions.slice(0, 5).map((session: AttendanceSession) => {
-                      const sessionDate = format(session.createdAt?.toDate() || new Date(), 'yyyy-MM-dd');
-                      const sessionTime = session.session;
-                      const sessionUrl = `/attendance/${encodeURIComponent(section)}?date=${sessionDate}&time=${sessionTime}`;
+                      const sessionUrl = `/attendance/${encodeURIComponent(section)}?date=${session.date}&time=${session.session}`;
 
                       return (
                         <div
@@ -861,7 +859,7 @@ export default function SectionAttendancePage() {
                             </div>
                             <div>
                               <p className="font-semibold text-cyber-gray-900 text-sm md:text-base">
-                                {format(session.createdAt?.toDate() || new Date(), 'MMM dd, yyyy')}
+                                {format(new Date(session.date), 'MMM dd, yyyy')}
                               </p>
                               <p className="text-xs md:text-sm text-cyber-gray-600">
                                 <span className="md:hidden">{session.session}</span>
