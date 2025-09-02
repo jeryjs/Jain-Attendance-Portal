@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Student, SECTION_MAPPINGS } from '@/lib/types';
+import { Student } from '@/lib/types';
 import { getProgramName } from '@/lib/utils';
 import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -54,6 +54,8 @@ export default function StudentForm({ student, sections, onSubmit, onCancel }: S
       ? { ...student, ...formData }
       : { ...formData };
 
+    studentData.name = studentData.name.trim().toUpperCase();
+
     onSubmit(studentData);
   };
 
@@ -89,6 +91,21 @@ export default function StudentForm({ student, sections, onSubmit, onCancel }: S
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-cyber-gray-700 mb-1">
+              Application Number *
+            </label>
+            <Input
+              type="text"
+              value={formData.usn}
+              onChange={(e) => handleInputChange('usn', e.target.value.toUpperCase())}
+              placeholder="e.g., JUUG...."
+              disabled={!!student}
+              className={`${errors.usn ? 'border-red-300 focus:border-red-500' : ''} ${student ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+            />
+            {errors.usn && (<p className="text-red-600 text-sm mt-1">{errors.usn}</p>)}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-cyber-gray-700 mb-1">
               Full Name *
             </label>
             <Input
@@ -97,24 +114,11 @@ export default function StudentForm({ student, sections, onSubmit, onCancel }: S
               onChange={(e) => handleInputChange('name', e.target.value)}
               placeholder="Enter student's full name"
               className={errors.name ? 'border-red-300 focus:border-red-500' : ''}
+              style={{ textTransform: 'uppercase' }}
             />
             {errors.name && (
               <p className="text-red-600 text-sm mt-1">{errors.name}</p>
             )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-cyber-gray-700 mb-1">
-              Application Number *
-            </label>
-            <Input
-              type="text"
-              value={formData.usn}
-              onChange={(e) => handleInputChange('usn', e.target.value.toUpperCase())}
-              placeholder="e.g., 22CS001"
-              className={errors.usn ? 'border-red-300 focus:border-red-500' : ''}
-            />
-            {errors.usn && (<p className="text-red-600 text-sm mt-1">{errors.usn}</p>)}
           </div>
 
           <div>
