@@ -32,9 +32,7 @@ export default function StudentForm({ student, sections, onSubmit, onCancel }: S
     }
 
     if (!formData.usn.trim()) {
-      newErrors.usn = 'USN is required';
-    } else if (!/^[0-9]{2}[A-Z]{2,3}[0-9]{2,3}$/.test(formData.usn.toUpperCase())) {
-      newErrors.usn = 'USN format should be like 22CS001';
+      newErrors.usn = 'Application Number is required';
     }
 
     if (!formData.section) {
