@@ -8,6 +8,7 @@ export interface Program {
 }
 
 export interface Student {
+  id: string;
   name: string;
   usn: string;
   section: string;
@@ -99,5 +100,6 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: Home },
   { label: 'Attendance', href: '/attendance', icon: Calendar },
   { label: 'Reports', href: () => getReportsRoute(), icon: BarChart3 },
+  { label: 'Students', href: '/students/admin', icon: BarChart3, adminOnly: true },
   // { label: 'Settings', href: '/settings', icon: Settings, adminOnly: true },
 ];

@@ -1,7 +1,9 @@
 import { DateRange } from '@/components/ui/date-picker';
 import { db } from '@/lib/firebase';
 import {
+  addDoc,
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -401,5 +403,88 @@ export class FirebaseService {
       if (filters.dateRange?.to) sessions = sessions.filter((s: any) => new Date(s.date) <= filters.dateRange!.to!);
     }
     return sessions;
+  }
+
+  static async addStudent(studentData: Omit<Student, 'id'>) {
+    try {
+      const docRef = await addDoc(collection(db, 'students'), {
+        ...studentData,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
+      });
+
+      // Clear cache
+      studentsCache.clear();
+      localStorage.removeItem('adminStudentsCache');
+
+      return docRef.id;
+    } catch (error) {
+      console.error('Error adding student:', error);
+      throw new Error('Failed to add student. Please check your connection and try again.');
+    }
+  }
+
+  static async updateStudent(studentId: string, updateData: Partial<Omit<Student, 'id'>>) {
+    try {
+      const studentRef = doc(db, 'students', studentId);
+      await updateDoc(studentRef, {
+        ...updateData,
+        updatedAt: Timestamp.now()
+      });
+
+      // Clear cache
+      studentsCache.clear();
+      localStorage.removeItem('adminStudentsCache');
+
+      return studentId;
+    } catch (error) {
+      console.error('Error updating student:', error);
+      throw new Error('Failed to update student. Please check your connection and try again.');
+    }
+  }
+
+  static async deleteStudent(studentId: string) {
+    try {
+      const studentRef = doc(db, 'students', studentId);
+      await deleteDoc(studentRef);
+
+      // Clear cache
+      studentsCache.clear();
+      localStorage.removeItem('adminStudentsCache');
+
+      return studentId;
+    } catch (error) {
+      console.error('Error deleting student:', error);
+      throw new Error('Failed to delete student. Please check your connection and try again.');
+    }
+  }
+
+  static async bulkAddStudents(students: Omit<Student, 'id'>[]) {
+    const batch = writeBatch(db);
+
+    try {
+      const results = [];
+
+      for (const studentData of students) {
+        const docRef = doc(collection(db, 'students'));
+        batch.set(docRef, {
+          ...studentData,
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now()
+        });
+        results.push(docRef.id);
+      }
+
+      await batch.commit();
+
+      // Clear cache
+      studentsCache.clear();
+      localStorage.removeItem('adminStudentsCache');
+
+      return results;
+    } catch (error) {
+      console.error('Error bulk adding students:', error);
+      throw new Error('Failed to add students. Please check your connection and try again.');
+    }
   }
 }
