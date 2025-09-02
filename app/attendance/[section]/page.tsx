@@ -2,10 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { DatePicker } from "@/components/ui/date-picker";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
@@ -35,6 +32,7 @@ import {
 } from 'lucide-react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import ConfigureSessionDialog from './ConfigureSessionDialog';
 
 export default function SectionAttendancePage() {
   const params = useParams();
@@ -52,17 +50,25 @@ export default function SectionAttendancePage() {
 
   const [students, setStudents] = useState<Student[]>([]);
   const [attendance, setAttendance] = useState<Record<string, boolean>>({});
-  const [selectedDate, setSelectedDate] = useState<Date>(urlDate ? new Date(urlDate) : new Date());
-  const [selectedSession, setSelectedSession] = useState<SessionOption>(urlTime as SessionOption || '8.45-9.45');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [loadingStudents, setLoadingData] = useState(true);
   const [savingAttendance, setSavingAttendance] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
-  const [existingSession, setExistingSession] = useState<any>(null);
-  const [originalAttendance, setOriginalAttendance] = useState<Record<string, boolean>>({});
-  const [sectionSessions, setSectionSessions] = useState<any[]>([]);
+  const [existingSession, setExistingSession] = useState<AttendanceSession | null>(null); // Stores the data for given sessionId if it exists
+  const [originalAttendance, setOriginalAttendance] = useState<Record<string, boolean>>({});  // to track original attendance for change detection
+  const [sectionSessions, setSectionSessions] = useState<AttendanceSession[]>([]);
   const [sortConfig, setSortConfig] = useState<{ field: 'name' | 'usn' | 'attendance' | null; direction: 'asc' | 'desc' }>({ field: null, direction: 'asc' });
+
+  // These are derived from URL params, passed to dialog as initial values
+  const [selectedDate, setSelectedDate] = useState<Date>(urlDate ? new Date(urlDate) : new Date());
+  const [selectedSession, setSelectedSession] = useState<SessionOption>((urlTime as SessionOption) || '8.45-9.45');
+
+  // Sync selectedDate and selectedSession with URL params
+  useEffect(() => {
+    setSelectedDate(urlDate ? new Date(urlDate) : new Date());
+    setSelectedSession((urlTime as SessionOption) || '8.45-9.45');
+  }, [urlDate, urlTime]);
 
   // Date validation - restrict to reasonable range
   const isValidDate = (dateStr: string) => {
@@ -90,11 +96,15 @@ export default function SectionAttendancePage() {
 
   const loadData = async () => {
     if (loading) return;
-    
+
     try {
       setLoadingData(true);
       const studentsData = await FirebaseService.getStudents(section);
       setStudents(studentsData);
+
+      // reset unnecessary states
+      setExistingSession(null);
+      setOriginalAttendance({});
 
       // Initialize attendance state
       const initialAttendance: Record<string, boolean> = {};
@@ -314,7 +324,13 @@ export default function SectionAttendancePage() {
     setAttendance(newAttendance);
   };
 
-  const handleStartSession = async () => {
+  const handleSessionConfirm = async (selectedDate: Date, selectedSession: SessionOption) => {
+    // If update configuration
+    if (isValidSession && existingSession) {
+      setSelectedDate(selectedDate);
+      setSelectedSession(selectedSession);
+      return;
+    };
     // Check for unsaved changes before proceeding
     if (hasUnsavedChanges()) {
       const confirmed = window.confirm(
@@ -326,7 +342,6 @@ export default function SectionAttendancePage() {
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
     const timeStr = selectedSession;
     router.push(`/attendance/${encodeURIComponent(section)}?date=${dateStr}&time=${timeStr}`);
-    setIsDialogOpen(false);
   };
 
   const handleSaveAttendance = async () => {
@@ -340,6 +355,60 @@ export default function SectionAttendancePage() {
         isPresent,
       }));
 
+      // Check if user changed date/time during edit mode - if so, trigger migration
+      const currentDateStr = format(selectedDate, 'yyyy-MM-dd');
+      const currentTimeStr = selectedSession;
+      const hasDateTimeChanged = isEditMode && (currentDateStr !== urlDate || currentTimeStr !== urlTime);
+
+      if (hasDateTimeChanged) {
+        // User changed date/time during edit - trigger migration instead of regular save
+        const newSessionKey = `${section}_${currentDateStr}_${currentTimeStr}`;
+
+        try {
+          // Check if target session already exists
+          const targetSession = await FirebaseService.getSessionById(newSessionKey);
+          if (targetSession) {
+            addToast({
+              title: "Session Already Exists",
+              description: `A session already exists for ${currentDateStr} at ${currentTimeStr}. Cannot move current session there.`,
+              variant: "destructive"
+            });
+            return;
+          }
+
+          // Migrate the session
+          await FirebaseService.migrateSession(sessionKey, {
+            section,
+            date: currentDateStr,
+            session: currentTimeStr,
+            teacherId: user?.uid || '',
+            teacherEmail: user?.email || '',
+            totalStudents: students.length,
+            records: attendanceRecords,
+            editHistory: existingSession?.editHistory || []
+          });
+
+          addToast({
+            title: "Session Updated",
+            description: `Session successfully moved to ${currentDateStr} at ${currentTimeStr}`,
+            variant: "success"
+          });
+
+          // Navigate to the new session
+          router.replace(`/attendance/${encodeURIComponent(section)}?date=${currentDateStr}&time=${currentTimeStr}`);
+          return;
+        } catch (error) {
+          console.error('Error migrating session during save:', error);
+          addToast({
+            title: "Migration Failed",
+            description: error instanceof Error ? error.message : "Failed to update session date/time",
+            variant: "destructive"
+          });
+          return;
+        }
+      }
+
+      // Regular save logic (no date/time change)
       // Generate edit summary if this is an existing session
       let newEditHistory: Array<{ timestamp: Date; email: string; details: string }> = [];
 
@@ -448,7 +517,8 @@ export default function SectionAttendancePage() {
       );
       if (!confirmed) return;
     }
-    router.push('/attendance');
+    if (isValidSession) router.push(`/attendance/${encodeURIComponent(section)}`);
+    else router.push('/attendance');
   };
 
   if (loading || loadingStudents) {
@@ -480,7 +550,7 @@ export default function SectionAttendancePage() {
               className=""
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Programs
+              Back to {isValidSession ? section : 'Attendance'}
             </Button>
           </div>
 
@@ -516,13 +586,53 @@ export default function SectionAttendancePage() {
           </Card>
         </div>
 
+        {/* Attendance Status */}
+        {existingSession && (
+          <Card
+            variant="cyber"
+            className="mb-4 md:mb-8 p-4 md:p-6 flex flex-col gap-4 bg-gradient-to-br from-cyber-yellow/10 to-cyber-gray-50 border-2 border-cyber-yellow/40 shadow-lg"
+          >
+            <div className="flex items-center gap-3 mb-2">
+              <CheckCircle className="w-6 h-6 text-green-600 animate-in fade-in" />
+              <span className="font-bold text-cyber-gray-900 text-lg md:text-xl">
+                Attendance taken
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs md:text-sm text-cyber-gray-700 mt-2">
+              <span className="flex items-center gap-1">
+                <Users className="w-4 h-4 text-cyber-gray-400" />
+                Taken by:
+                <span className="font-semibold text-cyber-gray-900">
+                  {existingSession.teacherEmail}
+                </span>
+                <span className="mx-2 text-cyber-gray-400">•</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <CalendarIcon className="w-4 h-4 text-cyber-yellow" />
+                Taken on:
+                <span className="font-semibold text-cyber-gray-900">
+                  {existingSession.createdAt?.toDate().toLocaleString()}
+                </span>
+              </span>
+              <span className="mx-2 text-cyber-gray-400">•</span>
+              <span className="flex items-center gap-1">
+                <Edit className="w-4 h-4 text-blue-500" />
+                Last updated:
+                <span className="font-semibold text-cyber-gray-900">
+                  {existingSession.updatedAt?.toDate().toLocaleString()}
+                </span>
+              </span>
+            </div>
+          </Card>
+        )}
+
         {/* Session Info & Stats */}
         {isValidSession && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-6 mb-4 md:mb-8">
             <Card
               variant="cyber"
               className="text-center p-3 md:p-6 cursor-pointer hover:scale-105 transition-all duration-300"
-              onClick={() => setIsDialogOpen(true)}
+              onClick={() => !isViewOnly && setIsDialogOpen(true)}
             >
               <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-lg flex items-center justify-center mx-auto mb-1 md:mb-2">
                 <CalendarIcon className="w-4 h-4 md:w-5 md:h-5 text-cyber-gray-900" />
@@ -534,7 +644,7 @@ export default function SectionAttendancePage() {
             <Card
               variant="cyber"
               className="text-center p-3 md:p-6 cursor-pointer hover:scale-105 transition-all duration-300"
-              onClick={() => setIsDialogOpen(true)}
+              onClick={() => !isViewOnly && setIsDialogOpen(true)}
             >
               <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-lg flex items-center justify-center mx-auto mb-1 md:mb-2">
                 <Clock className="w-4 h-4 md:w-5 md:h-5 text-cyber-gray-900" />
@@ -837,21 +947,11 @@ export default function SectionAttendancePage() {
                   </h3>
                   <div className="space-y-3">
                     {sectionSessions.slice(0, 5).map((session: AttendanceSession) => {
-                      const sessionUrl = `/attendance/${encodeURIComponent(section)}?date=${session.date}&time=${session.session}`;
-
                       return (
                         <div
                           key={session.id}
                           className="flex items-center justify-between py-2 md:p-4 bg-cyber-gray-50 rounded-xl hover:bg-cyber-gray-100 cursor-pointer transition-colors group"
-                          onClick={() => {
-                            if (hasUnsavedChanges()) {
-                              const confirmed = window.confirm(
-                                'You have unsaved attendance changes. Are you sure you want to navigate to another session without saving?'
-                              );
-                              if (!confirmed) return;
-                            }
-                            router.push(sessionUrl);
-                          }}
+                          onClick={() => router.push(`/attendance/${encodeURIComponent(section)}?date=${session.date}&time=${session.session}`)}
                         >
                           <div className="flex items-center gap-3 md:gap-4">
                             <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-lg flex items-center justify-center">
@@ -920,68 +1020,14 @@ export default function SectionAttendancePage() {
         )}
 
         {/* Configure Session Dialog */}
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-lg md:text-xl">Configure Attendance Session</DialogTitle>
-              <DialogDescription className="text-sm md:text-base">
-                Select date and session time to begin taking attendance.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-3 md:space-y-4">
-              <div>
-                <label className="text-sm font-medium text-cyber-gray-700 mb-2 block">Date</label>
-                <DatePicker
-                  date={selectedDate}
-                  onDateChange={(date) => date && setSelectedDate(date as Date)}
-                  placeholder="Select session date"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-cyber-gray-700">Session Time</label>
-                <Select value={selectedSession} onValueChange={(value: SessionOption) => setSelectedSession(value)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SESSION_OPTIONS.map((option) => (
-                      <SelectItem key={option.key} value={option.key}>
-                        {option.value}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Warning for unsaved changes */}
-              {hasUnsavedChanges() && (
-                <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-3 md:p-4 shadow-sm">
-                  <div className="flex items-start gap-2 md:gap-3">
-                    <AlertTriangle className="w-4 h-4 md:w-5 md:h-5 text-amber-600 mt-0.5 flex-shrink-0" />
-                    <div className="flex-1">
-                      <h4 className="text-sm md:text-base font-semibold text-amber-800 mb-1">
-                        You have unsaved attendance changes.
-                      </h4>
-                      <p className="text-xs md:text-sm text-amber-700">
-                        Changing the session configuration will navigate to a new session and your current changes will be lost. Make sure to save your attendance first.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-2">
-                <Button
-                  onClick={handleStartSession}
-                  className="flex-1"
-                  disabled={savingAttendance}
-                >
-                  {savingAttendance ? 'Starting...' : 'Start Session'}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <ConfigureSessionDialog
+          isOpen={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+          initialDate={selectedDate}
+          initialSession={selectedSession}
+          isNewSession={!isValidSession || !existingSession}
+          onConfirm={handleSessionConfirm}
+        />
       </div>
     </div>
   );

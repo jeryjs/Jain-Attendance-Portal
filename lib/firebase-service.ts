@@ -321,12 +321,99 @@ export class FirebaseService {
           presentStudents: data.presentStudents || [],
           createdAt: data.createdAt,
           updatedAt: data.updatedAt
-        };
+        } as AttendanceSession;
       }
       return null;
     } catch (error) {
       console.error('Error getting session by ID:', error);
       throw new Error('Failed to get session data. Please check your connection and try again.');
+    }
+  }
+
+  // Migrate session data from old session to new session (for date/time corrections)
+  static async migrateSession(oldSessionId: string, newSessionData: {
+    section: string;
+    date: string;
+    session: string;
+    teacherId: string;
+    teacherEmail: string;
+    totalStudents: number;
+    records: Array<{ studentUsn: string; isPresent: boolean }>;
+    editHistory?: Array<{ timestamp: Date; email: string; details: string }>;
+  }) {
+    try {
+      const newSessionId = `${newSessionData.section}_${newSessionData.date}_${newSessionData.session}`;
+      
+      // Check if target session already exists
+      const newSessionRef = doc(db, 'attendance_sessions', newSessionId);
+      const newSessionSnap = await getDoc(newSessionRef);
+      
+      if (newSessionSnap.exists()) {
+        throw new Error(`A session already exists for ${newSessionData.date} at ${newSessionData.session}. Cannot migrate to existing session.`);
+      }
+      
+      // Get the old session data
+      const oldSessionRef = doc(db, 'attendance_sessions', oldSessionId);
+      const oldSessionSnap = await getDoc(oldSessionRef);
+      
+      if (!oldSessionSnap.exists()) {
+        throw new Error('Original session not found. Cannot migrate.');
+      }
+      
+      const oldSessionData = oldSessionSnap.data();
+      
+      // Filter only present students from new records
+      const presentStudents = newSessionData.records
+        .filter(record => record.isPresent)
+        .map(record => record.studentUsn);
+      
+      const presentCount = presentStudents.length;
+      const absentCount = newSessionData.records.length - presentCount;
+      
+      // Add migration entry to edit history
+      const migrationHistory = [
+        ...(newSessionData.editHistory || []),
+        {
+          timestamp: new Date(),
+          email: newSessionData.teacherEmail,
+          details: `Session migrated from ${oldSessionId.split('_').slice(1).join(' at ')} to ${newSessionData.date} at ${newSessionData.session}`
+        }
+      ];
+      
+      // Create new session with migrated data
+      const newSessionDoc = {
+        section: newSessionData.section,
+        date: newSessionData.date,
+        session: newSessionData.session,
+        teacherId: newSessionData.teacherId,
+        teacherEmail: newSessionData.teacherEmail,
+        totalStudents: newSessionData.totalStudents,
+        presentStudents,
+        presentCount,
+        absentCount,
+        editHistory: migrationHistory,
+        createdAt: oldSessionData.createdAt, // Preserve original creation time
+        updatedAt: Timestamp.now()
+      };
+      
+      // Use batch to ensure atomicity
+      const batch = writeBatch(db);
+      
+      // Create new session
+      batch.set(newSessionRef, newSessionDoc);
+      
+      // Delete old session
+      batch.delete(oldSessionRef);
+      
+      await batch.commit();
+      
+      // Clear relevant caches
+      sessionsCache.clear();
+      
+      return newSessionId;
+    } catch (error) {
+      console.error('Error migrating session:', error);
+      throw error;
     }
   }
 
