@@ -10,17 +10,17 @@ import { getProgramName } from '@/lib/utils';
 import { DataGrid, GridActionsCellItem, GridColDef, GridRowId, GridRowParams } from '@mui/x-data-grid';
 import { format } from 'date-fns';
 import {
-    ArrowLeft,
-    Download,
-    Edit as EditIcon,
-    GraduationCap,
-    Plus,
-    RefreshCw,
-    Shield,
-    Trash2,
-    TrendingUp,
-    Users,
-    type LucideIcon
+  ArrowLeft,
+  Download,
+  Edit as EditIcon,
+  GraduationCap,
+  Plus,
+  RefreshCw,
+  Shield,
+  Trash2,
+  TrendingUp,
+  Users,
+  type LucideIcon
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
@@ -80,7 +80,7 @@ export default function AdminStudentsPage() {
     const recentAdditions = Math.floor(totalStudents * 0.1); // 10% as recent
 
     // Calculate data quality score (students with complete data)
-    const completeDataStudents = studentsData.filter(student => 
+    const completeDataStudents = studentsData.filter(student =>
       student.name && student.usn && student.section
     ).length;
     const dataQualityScore = totalStudents > 0 ? Math.round((completeDataStudents / totalStudents) * 100) : 100;
@@ -329,9 +329,11 @@ export default function AdminStudentsPage() {
   if (loading || loadingData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="relative">
+        <div className="relative flex flex-col items-center">
           <div className="w-16 h-16 border-4 border-purple-300 border-t-purple-600 rounded-full animate-spin"></div>
-          <div className="absolute inset-0 w-16 h-16 border-4 border-purple-200 border-t-transparent rounded-full animate-spin animation-delay-150"></div>
+          <span className="mt-6 text-purple-700 font-medium text-lg">
+            Fetching students data may take a while...
+          </span>
         </div>
       </div>
     );
@@ -369,7 +371,7 @@ export default function AdminStudentsPage() {
             <div className="text-right text-sm">
               <p className="text-purple-600">Last updated</p>
               <p className="font-medium text-purple-800">
-                {format((JSON.parse(localStorage.adminStudentsCache).timestamp || new Date()), 'MMM dd, HH:mm')}
+                {format((JSON.parse(localStorage.getItem('adminStudentsCache') || '{}')).timestamp || new Date(), 'MMM dd, HH:mm')}
               </p>
             </div>
 
@@ -495,8 +497,8 @@ export default function AdminStudentsPage() {
           <StudentForm
             student={editingStudent}
             sections={SECTIONS}
-            onSubmit={editingStudent ? 
-              (studentData: Student | Omit<Student, 'id'>) => handleUpdateStudent(studentData as Student) : 
+            onSubmit={editingStudent ?
+              (studentData: Student | Omit<Student, 'id'>) => handleUpdateStudent(studentData as Student) :
               handleAddStudent
             }
             onCancel={() => {
