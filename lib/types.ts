@@ -1,4 +1,4 @@
-import { Home, Calendar, BarChart3 } from "lucide-react";
+import { BarChart3, Calendar, Home, Users } from "lucide-react";
 import { getReportsRoute } from "./utils";
 
 export interface Program {
@@ -102,6 +102,6 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: Home },
   { label: 'Attendance', href: '/attendance', icon: Calendar },
   { label: 'Reports', href: () => getReportsRoute(), icon: BarChart3 },
-  { label: 'Students', href: '/students/admin', icon: BarChart3, adminOnly: true },
+  { label: 'Students', href: '/students/admin', icon: Users, adminOnly: true },
   // { label: 'Settings', href: '/settings', icon: Settings, adminOnly: true },
 ];
