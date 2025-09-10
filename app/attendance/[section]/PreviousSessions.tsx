@@ -18,6 +18,8 @@ import {
   Filter,
   Loader2,
   RotateCcw,
+  SortAsc,
+  SortDesc,
   X
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -63,6 +65,8 @@ export default function PreviousSessions({
   const [showFilterDialog, setShowFilterDialog] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState<FilterCondition[]>([]);
   const [tempFilters, setTempFilters] = useState<FilterCondition[]>([]);
+  const [sortBy, setSortBy] = useState<'date' | 'session' | 'rate' | 'createdAt' | 'updatedAt' | 'teacherEmail'>('date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Load initial sessions
   const loadSessions = useCallback(async (reset = false, filters: FilterCondition[] = []) => {
@@ -134,6 +138,46 @@ export default function PreviousSessions({
     }
   }, [showFilterDialog, appliedFilters]);
 
+  // Sort sessions based on current sort settings
+  const getSortedSessions = useCallback((sessions: AttendanceSession[]) => {
+    return [...sessions].sort((a, b) => {
+      let aValue: any, bValue: any;
+
+      switch (sortBy) {
+        case 'date':
+          aValue = new Date(a.date).getTime();
+          bValue = new Date(b.date).getTime();
+          break;
+        case 'session':
+          aValue = a.session;
+          bValue = b.session;
+          break;
+        case 'rate':
+          aValue = a.totalStudents > 0 ? ((a.presentCount || 0) / a.totalStudents) * 100 : 0;
+          bValue = b.totalStudents > 0 ? ((b.presentCount || 0) / b.totalStudents) * 100 : 0;
+          break;
+        case 'createdAt':
+          aValue = a.createdAt?.toDate?.()?.getTime() || 0;
+          bValue = b.createdAt?.toDate?.()?.getTime() || 0;
+          break;
+        case 'updatedAt':
+          aValue = a.updatedAt?.toDate?.()?.getTime() || 0;
+          bValue = b.updatedAt?.toDate?.()?.getTime() || 0;
+          break;
+        case 'teacherEmail':
+          aValue = a.teacherEmail || '';
+          bValue = b.teacherEmail || '';
+          break;
+        default:
+          return 0;
+      }
+
+      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [sortBy, sortOrder]);
+
   return (
     <>
       <Card variant="cyber">
@@ -150,16 +194,45 @@ export default function PreviousSessions({
               <div>
                 <h3 className="text-lg md:text-xl font-bold text-cyber-gray-900 flex items-center gap-2 mb-1">
                   <CalendarIcon className="w-5 h-5 text-cyber-yellow" />
-                  Previous Sessions
+                  Past Sessions
                 </h3>
                 <p className="text-sm text-cyber-gray-600">
                   {appliedFilters.length > 0
                   ? `Showing ${sessionsData.sessions.length} / ${sessionsData.total} sessions`
                   : `${sessionsData.total} total sessions found`}
+                  <span className="ml-2 text-xs">• Sorted by {sortBy} ({sortOrder === 'asc' ? '↑' : '↓'})</span>
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 self-end">
+                <Select
+                  value={sortBy}
+                  onValueChange={(value: 'date' | 'session' | 'rate' | 'createdAt' | 'updatedAt' | 'teacherEmail') =>
+                    setSortBy(value)
+                  }
+                >
+                  <SelectTrigger className="w-24">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="date">Date</SelectItem>
+                    <SelectItem value="session">Session</SelectItem>
+                    <SelectItem value="rate">Rate</SelectItem>
+                    <SelectItem value="createdAt">Created</SelectItem>
+                    <SelectItem value="updatedAt">Updated</SelectItem>
+                    {isAdminView && <SelectItem className='hidden md:block' value="teacherEmail">Teacher</SelectItem>}
+                  </SelectContent>
+                </Select>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                  className="flex items-center gap-1"
+                >
+                  {sortOrder === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
+                </Button>
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -173,16 +246,6 @@ export default function PreviousSessions({
                       {appliedFilters.length}
                     </span>
                   )}
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => router.push('/reports')}
-                  className="flex items-center gap-2"
-                >
-                  <BarChart3 className="w-4 h-4" />
-                  <span className="hidden sm:inline">Analytics</span>
                 </Button>
               </div>
             </div>
@@ -214,7 +277,7 @@ export default function PreviousSessions({
             {/* Sessions List */}
             {sessionsData.sessions.length > 0 ? (
               <div className="space-y-3">
-                {sessionsData.sessions.map((session) => {
+                {getSortedSessions(sessionsData.sessions).map((session) => {
                   const attendancePercentage = session.totalStudents > 0
                     ? Math.round(((session.presentCount || 0) / session.totalStudents) * 100)
                     : 0;
