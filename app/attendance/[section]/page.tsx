@@ -455,7 +455,7 @@ export default function SectionAttendancePage() {
         </div>
 
         {/* Attendance Status, Session Info & Stats, and Attendance Views */}
-        <AttendanceView
+        {isValidSession && <AttendanceView
           existingSession={existingSession}
           isValidSession={!!isValidSession}
           selectedDate={selectedDate}
@@ -467,7 +467,7 @@ export default function SectionAttendancePage() {
           attendance={attendance}
           setAttendance={setAttendance}
           isEditMode={isEditMode}
-        />
+        />}
 
         {/* Empty State */}
         {!isValidSession && !loadingStudents && (
