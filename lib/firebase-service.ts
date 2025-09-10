@@ -5,6 +5,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getCountFromServer,
   getDoc,
   getDocs,
   limit,
@@ -25,6 +26,7 @@ const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
 
 // Cache for attendance sessions
 const sessionsCache = new Map<string, { data: any, timestamp: number }>();
+const MAX_CACHE_SIZE = 100; // Prevent memory bloat
 
 export class FirebaseService {
   // Get students with caching
@@ -209,22 +211,20 @@ export class FirebaseService {
     limit: number;
     startAfter?: any;
   }) {
-    // Create cache key for first page only (when no startAfter)
-    const shouldCache = !options.startAfter;
-    const cacheKey = shouldCache ? `sessions_paginated_${JSON.stringify({
+    // Create cache key
+    const cacheKey = `sessions_paginated_${JSON.stringify({
       section: options.section,
       teacherId: options.teacherId,
       filters: options.filters,
-      limit: options.limit
-    })}` : null;
+      limit: options.limit,
+      startAfter: options.startAfter?.id || 'first'
+    })}`;
 
-    // Check cache first (only for first page)
-    if (shouldCache && cacheKey) {
-      const now = Date.now();
-      const cached = sessionsCache.get(cacheKey);
-      if (cached && (now - cached.timestamp) < CACHE_DURATION) {
-        return cached.data;
-      }
+    // Check cache first
+    const now = Date.now();
+    const cached = sessionsCache.get(cacheKey);
+    if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+      return cached.data;
     }
 
     try {
@@ -304,18 +304,41 @@ export class FirebaseService {
         });
       }
 
-      // Get total count (for display purposes)
-      const totalQuery = query(collection(db, 'attendance_sessions'));
-      let totalCountQuery = totalQuery;
-      if (options.section) {
-        totalCountQuery = query(totalCountQuery, where('section', '==', options.section));
-      }
-      if (options.teacherId) {
-        totalCountQuery = query(totalCountQuery, where('teacherId', '==', options.teacherId));
+      // Get total count (for display purposes) - smart caching using existing sessions cache
+      let totalCount: number;
+      
+      // Find any cached key with matching section/teacherId (regardless of filters)
+      let validCachedCount: number | null = null;
+      for (const [key, cached] of sessionsCache.entries()) {
+        if (key.startsWith('sessions_paginated_') && (now - cached.timestamp) < CACHE_DURATION) {
+          try {
+            const parsed = JSON.parse(key.replace('sessions_paginated_', ''));
+            if (parsed.section === options.section && parsed.teacherId === options.teacherId) {
+              validCachedCount = cached.data.total;
+              break; // Use the first valid cached count we find
+            }
+          } catch {
+            continue;
+          }
+        }
       }
       
-      const totalSnapshot = await getDocs(totalCountQuery);
-      const totalCount = totalSnapshot.size;
+      if (validCachedCount !== null) {
+        totalCount = validCachedCount;
+      } else {
+        // No valid cache, fetch count from server
+        const totalQuery = query(collection(db, 'attendance_sessions'));
+        let totalCountQuery = totalQuery;
+        if (options.section) {
+          totalCountQuery = query(totalCountQuery, where('section', '==', options.section));
+        }
+        if (options.teacherId) {
+          totalCountQuery = query(totalCountQuery, where('teacherId', '==', options.teacherId));
+        }
+        
+        const totalCountSnapshot = await getCountFromServer(totalCountQuery);
+        totalCount = totalCountSnapshot.data().count;
+      }
 
       const result = {
         sessions,
@@ -324,13 +347,19 @@ export class FirebaseService {
         total: totalCount
       };
 
-      // Cache the result (only for first page)
-      if (shouldCache && cacheKey) {
-        sessionsCache.set(cacheKey, {
-          data: result,
-          timestamp: Date.now()
-        });
+      // Cache the result for all pages with size management
+      if (sessionsCache.size >= MAX_CACHE_SIZE) {
+        // Remove oldest entries when cache gets too large
+        const oldestKey = sessionsCache.keys().next().value;
+        if (oldestKey) {
+          sessionsCache.delete(oldestKey);
+        }
       }
+      
+      sessionsCache.set(cacheKey, {
+        data: result,
+        timestamp: Date.now()
+      });
 
       return result;
     } catch (error) {
