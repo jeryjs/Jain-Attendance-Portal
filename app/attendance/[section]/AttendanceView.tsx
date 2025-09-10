@@ -54,10 +54,25 @@ export default function AttendanceView({
   // Internal state for search and sorting
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
-  const [sortConfig, setSortConfig] = useState<{
-    field: 'name' | 'usn' | 'attendance' | null;
-    direction: 'asc' | 'desc';
-  }>({ field: null, direction: 'asc' });
+  const [sortConfig, setSortConfig] = useState<{ field: 'name' | 'usn' | 'attendance' | null; direction: 'asc' | 'desc'; }>(
+    // Load from localStorage on initialization
+    () => {
+      try {
+        return JSON.parse(localStorage.getItem('Attendance:sort-config') || '') || { field: null, direction: 'asc' };
+      } catch {
+        return { field: null, direction: 'asc' };
+      }
+    }
+  );
+
+  // Save sort config to localStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('Attendance:sort-config', JSON.stringify(sortConfig));
+      } catch { /* Ignore localStorage errors */ }
+    }
+  }, [sortConfig]);
 
   // Filter and sort students
   useEffect(() => {
