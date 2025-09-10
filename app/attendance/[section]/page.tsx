@@ -6,12 +6,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { FirebaseService } from '@/lib/firebase-service';
 import { AttendanceSession, SESSION_OPTIONS, SessionOption, Student } from '@/lib/types';
-import { getSessionLabel } from '@/lib/utils';
 import { format } from 'date-fns';
 import {
   ArrowLeft,
   Calendar as CalendarIcon,
-  Clock,
   Edit,
   Save,
   UserCheck,
@@ -21,6 +19,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import AttendanceView from './AttendanceView';
 import ConfigureSessionDialog from './ConfigureSessionDialog';
+import PreviousSessions from './PreviousSessions';
 
 export default function SectionAttendancePage() {
   // Router & context
@@ -486,72 +485,11 @@ export default function SectionAttendancePage() {
         {!isValidSession && !loadingStudents && (
           <div className="space-y-4 md:space-y-6">
             {/* Previous Sessions */}
-            {sectionSessions.length > 0 && (
-              <Card variant="cyber">
-                <div className="p-4 md:p-6">
-                  <h3 className="text-lg md:text-xl font-bold text-cyber-gray-900 mb-3 md:mb-4 flex items-center gap-2">
-                    <Clock className="w-4 h-4 md:w-5 md:h-5 text-cyber-yellow" />
-                    Previous Sessions ({sectionSessions.length})
-                  </h3>
-                  <div className="space-y-3">
-                    {sectionSessions.slice(0, 5).map((session: AttendanceSession) => {
-                      return (
-                        <div
-                          key={session.id}
-                          className="flex items-center justify-between py-2 md:p-4 bg-cyber-gray-50 rounded-xl hover:bg-cyber-gray-100 cursor-pointer transition-colors group"
-                          onClick={() => router.push(`/attendance/${encodeURIComponent(section)}?date=${session.date}&time=${session.session}`)}
-                        >
-                          <div className="flex items-center gap-3 md:gap-4">
-                            <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-lg flex items-center justify-center">
-                              <CalendarIcon className="w-4 h-4 md:w-5 md:h-5 text-cyber-gray-900" />
-                            </div>
-                            <div>
-                              <p className="font-semibold text-cyber-gray-900 text-sm md:text-base">
-                                {format(new Date(session.date), 'MMM dd, yyyy')}
-                              </p>
-                              <p className="text-xs md:text-sm text-cyber-gray-600">
-                                <span className="md:hidden">{session.session}</span>
-                                <span className="hidden md:inline">{getSessionLabel(session.session)}{isAdminView && ` • ${session.teacherEmail}`}</span>
-                              </p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="flex items-center gap-2 md:gap-4">
-                              <div className="text-center">
-                                <p className="text-sm md:text-lg font-bold text-green-600">{session.presentCount || 0}</p>
-                                <p className="text-xs text-cyber-gray-600">Present</p>
-                              </div>
-                              <div className="text-center">
-                                <p className="text-sm md:text-lg font-bold text-red-600">{session.absentCount || 0}</p>
-                                <p className="text-xs text-cyber-gray-600">Absent</p>
-                              </div>
-                              <div className="text-center">
-                                <p className="text-sm md:text-lg font-bold text-cyber-gray-900">
-                                  {session.totalStudents > 0 ? Math.round(((session.presentCount || 0) / session.totalStudents) * 100) : 0}%
-                                </p>
-                                <p className="text-xs text-cyber-gray-600">Attendance</p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {sectionSessions.length > 5 && (
-                    <div className="mt-3 md:mt-4 text-center">
-                      <Button
-                        variant="outline"
-                        onClick={() => router.push('/reports')}
-                        className="w-full text-sm md:text-base"
-                      >
-                        View All Sessions ({sectionSessions.length})
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </Card>
-            )}
+            <PreviousSessions
+              sectionSessions={sectionSessions}
+              section={section}
+              isAdminView={isAdminView}
+            />
 
             {/* Stats Footer */}
             <div className="flex items-center justify-center space-x-3 md:space-x-4 text-xs md:text-sm text-cyber-gray-500">
