@@ -9,6 +9,7 @@ import { AttendanceSession, SESSION_OPTIONS, SessionOption, Student } from '@/li
 import { format } from 'date-fns';
 import {
   ArrowLeft,
+  BarChart3,
   Calendar as CalendarIcon,
   Edit,
   Save,
@@ -419,6 +420,16 @@ export default function SectionAttendancePage() {
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to {isValidSession ? section : 'Attendance'}
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push('/reports?section=' + encodeURIComponent(section))}
+              className="flex items-center gap-2"
+            >
+              <BarChart3 className="w-4 h-4" />
+              <span className="hidden sm:inline">Go to Analysis</span>
             </Button>
           </div>
 
