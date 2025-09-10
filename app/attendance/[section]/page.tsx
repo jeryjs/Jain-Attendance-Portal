@@ -44,7 +44,6 @@ export default function SectionAttendancePage() {
   const [savingAttendance, setSavingAttendance] = useState(false);
   const [existingSession, setExistingSession] = useState<AttendanceSession | null>(null); // current session data
   const [originalAttendance, setOriginalAttendance] = useState<Record<string, boolean>>({}); // for change detection
-  const [sectionSessions, setSectionSessions] = useState<AttendanceSession[]>([]);
 
   // Dialog initial values (synced with URL)
   const [selectedDate, setSelectedDate] = useState<Date>(urlDate ? new Date(urlDate) : new Date());
@@ -99,8 +98,7 @@ export default function SectionAttendancePage() {
       });
       setAttendance(initialAttendance);
 
-      // Load existing sessions for this section
-      await loadSectionSessions();
+
 
       // If valid session, load existing session data
       if (isValidSession) {
@@ -140,17 +138,7 @@ export default function SectionAttendancePage() {
     }
   }
 
-  const loadSectionSessions = async () => {
-    try {
-      const sessions = await FirebaseService.getAttendanceSessions({
-        section,
-        teacherId: isAdminView ? undefined : user?.uid
-      }).then(res => res.sort((a, b) => b.updatedAt.toDate().getTime() - a.updatedAt.toDate().getTime()));
-      setSectionSessions(sessions);
-    } catch (error) {
-      console.error('Error loading section sessions:', error);
-    }
-  };
+
 
   // Navigation warning for unsaved changes
   useEffect(() => {
@@ -486,9 +474,9 @@ export default function SectionAttendancePage() {
           <div className="space-y-4 md:space-y-6">
             {/* Previous Sessions */}
             <PreviousSessions
-              sectionSessions={sectionSessions}
               section={section}
               isAdminView={isAdminView}
+              userId={user?.uid}
             />
 
             {/* Stats Footer */}

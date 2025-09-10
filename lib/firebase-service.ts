@@ -11,20 +11,20 @@ import {
   orderBy,
   query,
   setDoc,
+  startAfter,
   Timestamp,
   updateDoc,
   where,
   writeBatch
 } from 'firebase/firestore';
 import { AttendanceSession, Student } from './types';
-import { parseSessionTime } from '@/app/reports/admin/utils';
 
 // Cache for student data
 const studentsCache = new Map<string, { data: any[], timestamp: number }>();
 const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
 
 // Cache for attendance sessions
-const sessionsCache = new Map<string, { data: any[], timestamp: number }>();
+const sessionsCache = new Map<string, { data: any, timestamp: number }>();
 
 export class FirebaseService {
   // Get students with caching
@@ -164,7 +164,7 @@ export class FirebaseService {
     // Check cache first
     const cached = sessionsCache.get(cacheKey);
     if (cached && (now - cached.timestamp) < CACHE_DURATION) {
-      return cached.data as AttendanceSession[];
+      return Array.isArray(cached.data) ? cached.data as AttendanceSession[] : cached.data.sessions as AttendanceSession[];
     }
 
     try {
@@ -193,6 +193,148 @@ export class FirebaseService {
       return sessions;
     } catch (error) {
       console.error('Error fetching attendance sessions:', error);
+      throw error;
+    }
+  }
+
+  // Get attendance sessions with Firestore pagination
+  static async getAttendanceSessionsPaginated(options: {
+    section?: string;
+    teacherId?: string;
+    filters?: Array<{
+      field: 'date' | 'attendance' | 'session';
+      operator: 'eq' | 'gte' | 'lte';
+      value: string | number;
+    }>;
+    limit: number;
+    startAfter?: any;
+  }) {
+    // Create cache key for first page only (when no startAfter)
+    const shouldCache = !options.startAfter;
+    const cacheKey = shouldCache ? `sessions_paginated_${JSON.stringify({
+      section: options.section,
+      teacherId: options.teacherId,
+      filters: options.filters,
+      limit: options.limit
+    })}` : null;
+
+    // Check cache first (only for first page)
+    if (shouldCache && cacheKey) {
+      const now = Date.now();
+      const cached = sessionsCache.get(cacheKey);
+      if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+        return cached.data;
+      }
+    }
+
+    try {
+      let q = query(collection(db, 'attendance_sessions'));
+
+      // Apply basic filters
+      if (options.section) {
+        q = query(q, where('section', '==', options.section));
+      }
+      if (options.teacherId) {
+        q = query(q, where('teacherId', '==', options.teacherId));
+      }
+
+      // Apply custom filters
+      if (options.filters) {
+        for (const filter of options.filters) {
+          switch (filter.field) {
+            case 'date':
+              if (filter.operator === 'eq') {
+                q = query(q, where('date', '==', filter.value));
+              } else if (filter.operator === 'gte') {
+                q = query(q, where('date', '>=', filter.value));
+              } else if (filter.operator === 'lte') {
+                q = query(q, where('date', '<=', filter.value));
+              }
+              break;
+            case 'session':
+              if (filter.operator === 'eq') {
+                q = query(q, where('session', '==', filter.value));
+              }
+              break;
+            // Note: attendance rate filtering is done post-fetch due to Firestore limitations
+          }
+        }
+      }
+
+      // Order by date descending
+      q = query(q, orderBy('date', 'desc'));
+
+      // Add pagination
+      if (options.startAfter) {
+        q = query(q, startAfter(options.startAfter));
+      }
+      q = query(q, limit(options.limit));
+
+      const querySnapshot = await getDocs(q);
+      let sessions = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as AttendanceSession[];
+
+      // Apply attendance rate filters (post-fetch)
+      if (options.filters && options.filters.length > 0) {
+        sessions = sessions.filter(session => {
+          for (const filter of options.filters!) {
+            if (filter.field === 'attendance') {
+              const rate = session.totalStudents > 0 
+                ? Math.round(((session.presentCount || 0) / session.totalStudents) * 100)
+                : 0;
+              
+              const numValue = typeof filter.value === 'string' ? parseInt(filter.value) : filter.value;
+              
+              switch (filter.operator) {
+                case 'eq':
+                  if (rate !== numValue) return false;
+                  break;
+                case 'gte':
+                  if (rate < numValue) return false;
+                  break;
+                case 'lte':
+                  if (rate > numValue) return false;
+                  break;
+              }
+            }
+          }
+          return true;
+        });
+      }
+
+      // Get total count (for display purposes)
+      const totalQuery = query(collection(db, 'attendance_sessions'));
+      let totalCountQuery = totalQuery;
+      if (options.section) {
+        totalCountQuery = query(totalCountQuery, where('section', '==', options.section));
+      }
+      if (options.teacherId) {
+        totalCountQuery = query(totalCountQuery, where('teacherId', '==', options.teacherId));
+      }
+      
+      const totalSnapshot = await getDocs(totalCountQuery);
+      const totalCount = totalSnapshot.size;
+
+      const result = {
+        sessions,
+        hasMore: sessions.length === options.limit,
+        lastDoc: querySnapshot.docs[querySnapshot.docs.length - 1],
+        total: totalCount
+      };
+
+      // Cache the result (only for first page)
+      if (shouldCache && cacheKey) {
+        sessionsCache.set(cacheKey, {
+          data: result,
+          timestamp: Date.now()
+        });
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Error fetching paginated attendance sessions:', error);
       throw error;
     }
   }
