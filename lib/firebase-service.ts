@@ -658,8 +658,33 @@ export class FirebaseService {
     if (filters) {
       if (filters.section) sessions = sessions.filter((s: any) => s.section === filters.section);
       if (filters.teacherId) sessions = sessions.filter((s: any) => s.teacherId === filters.teacherId);
-      if (filters.dateRange?.from) sessions = sessions.filter((s: any) => new Date(s.date) >= filters.dateRange!.from!);
-      if (filters.dateRange?.to) sessions = sessions.filter((s: any) => new Date(s.date) <= filters.dateRange!.to!);
+      if (filters.dateRange?.from || filters.dateRange?.to) {
+        sessions = sessions.filter((s: any) => {
+          const sessionDate = new Date(s.date);
+          const fromDate = filters.dateRange?.from;
+          const toDate = filters.dateRange?.to;
+
+          // Normalize dates to start/end of day for inclusive comparison
+          const sessionDateOnly = new Date(sessionDate.getFullYear(), sessionDate.getMonth(), sessionDate.getDate());
+          const fromDateOnly = fromDate ? new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate()) : null;
+          const toDateOnly = toDate ? new Date(toDate.getFullYear(), toDate.getMonth(), toDate.getDate()) : null;
+
+          // If only one date is selected, treat it as a single day
+          if (fromDateOnly && !toDateOnly) {
+            return sessionDateOnly.getTime() === fromDateOnly.getTime();
+          }
+          if (!fromDateOnly && toDateOnly) {
+            return sessionDateOnly.getTime() === toDateOnly.getTime();
+          }
+
+          // Both dates selected - inclusive range
+          if (fromDateOnly && toDateOnly) {
+            return sessionDateOnly >= fromDateOnly && sessionDateOnly <= toDateOnly;
+          }
+
+          return true;
+        });
+      }
     }
     return sessions;
   }

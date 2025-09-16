@@ -73,7 +73,11 @@ export function DatePicker({
   const handleClose = () => {
     setIsOpen(false);
     if (mode === "range" && tempRange) {
-      onDateChange?.(tempRange);
+      // If only start date is selected, use it as both start and end
+      const finalRange = tempRange.from && !tempRange.to
+        ? { from: tempRange.from, to: tempRange.from }
+        : tempRange;
+      onDateChange?.(finalRange);
     }
   };
 
@@ -84,6 +88,10 @@ export function DatePicker({
     if (mode === "range") {
       const displayRange = tempRange || (date as DateRange);
       if (!displayRange) return "";
+      if (displayRange.from && displayRange.to && displayRange.from.getTime() === displayRange.to.getTime()) {
+        // Single date selected
+        return format(displayRange.from, "PPP");
+      }
       return `${displayRange.from ? format(displayRange.from, "PPP") : ""} - ${displayRange.to ? format(displayRange.to, "PPP") : "Select end date"}`;
     }
     return "";
@@ -189,7 +197,7 @@ export function DatePicker({
                 </button>
                 <button
                   onClick={handleClose}
-                  disabled={!tempRange?.from || !tempRange?.to}
+                  disabled={!tempRange?.from}
                   className="px-3 py-1 text-sm bg-cyber-yellow text-cyber-gray-900 rounded hover:bg-cyber-yellow-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Apply

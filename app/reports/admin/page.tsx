@@ -324,8 +324,14 @@ export default function AdminReportsPage() {
                 <DatePicker
                   date={dateRange}
                   onDateChange={(range) => {
-                    if (range && 'from' in range && range.from && range.to) {
-                      setDateRange({ from: range.from, to: range.to });
+                    if (range && 'from' in range && range.from) {
+                      // If only start date is selected, use it as both start and end
+                      const finalRange = range.from && !range.to
+                        ? { from: range.from, to: range.from }
+                        : range;
+                      setDateRange(finalRange as DateRange);
+                    } else {
+                      setDateRange({ from: undefined, to: undefined });
                     }
                   }}
                   disabledDates={date => date < new Date(2025, 7, 25) || date > new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)}
@@ -413,9 +419,15 @@ export default function AdminReportsPage() {
                   <label className="text-sm font-medium text-cyber-gray-700 mb-2 block">Current Date Range</label>
                   <div className="p-3 bg-cyber-gray-50 rounded-lg">
                     {dateRange.from && dateRange.to ? (
-                      <p className="text-sm text-cyber-gray-900">
-                        {format(dateRange.from, 'MMM dd, yyyy')} - {format(dateRange.to, 'MMM dd, yyyy')}
-                      </p>
+                      dateRange.from.getTime() === dateRange.to.getTime() ? (
+                        <p className="text-sm text-cyber-gray-900">
+                          {format(dateRange.from, 'MMM dd, yyyy')} (Single Date)
+                        </p>
+                      ) : (
+                        <p className="text-sm text-cyber-gray-900">
+                          {format(dateRange.from, 'MMM dd, yyyy')} - {format(dateRange.to, 'MMM dd, yyyy')}
+                        </p>
+                      )
                     ) : (
                       <p className="text-sm text-cyber-gray-500">No date range selected</p>
                     )}
