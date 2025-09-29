@@ -18,7 +18,7 @@ import {
   where,
   writeBatch
 } from 'firebase/firestore';
-import { AttendanceSession, Student } from './types';
+import { AttendanceSession, Feedback, Student } from './types';
 
 // Cache for student data
 const studentsCache = new Map<string, { data: any[], timestamp: number }>();
@@ -27,6 +27,9 @@ const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
 // Cache for attendance sessions
 const sessionsCache = new Map<string, { data: any, timestamp: number }>();
 const MAX_CACHE_SIZE = 100; // Prevent memory bloat
+
+// Cache for feedback data
+const feedbackCache = new Map<string, { data: Feedback[], timestamp: number }>();
 
 export class FirebaseService {
   // Get students with caching
@@ -775,6 +778,85 @@ export class FirebaseService {
     } catch (error) {
       console.error('Error bulk adding students:', error);
       throw new Error('Failed to add students. Please check your connection and try again.');
+    }
+  }
+
+  // Save feedback entry
+  static async saveFeedback({ text, author, category = 'other' }: { text: string; author: string; category?: Feedback['category']; }) {
+    try {
+      const docRef = await addDoc(collection(db, 'attendance_feedback'), {
+        text,
+        category,
+        status: 'open',
+        author,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
+      });
+
+      // Clear feedback cache after adding new feedback
+      feedbackCache.clear();
+
+      return docRef.id;
+    } catch (error) {
+      console.error('Error saving feedback:', error);
+      throw error;
+    }
+  }
+
+  // Get recent feedback entries with caching
+  static async getFeedbacks(options?: { author?: string; limit?: number }) {
+    const cacheKey = `feedbacks_${JSON.stringify(options)}`;
+    const now = Date.now();
+
+    // Check cache first
+    const cached = feedbackCache.get(cacheKey);
+    if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+      return cached.data;
+    }
+
+    try {
+      let q = query(collection(db, 'attendance_feedback'), orderBy('updatedAt', 'desc'));
+      if (options?.author) q = query(q, where('author', '==', options.author));
+      if (options?.limit) q = query(q, limit(options.limit));
+      const snapshot = await getDocs(q);
+      const feedbacks = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate?.(),
+        updatedAt: doc.data().updatedAt?.toDate?.(),
+        resolvedAt: doc.data().resolvedAt?.toDate?.()
+      })) as Feedback[];
+
+      // Cache the result
+      feedbackCache.set(cacheKey, { data: feedbacks, timestamp: now });
+
+      return feedbacks;
+    } catch (error) {
+      console.error('Error fetching feedbacks:', error);
+      throw error;
+    }
+  }
+
+  // Update feedback (for admin responses and status changes, or user text updates)
+  static async updateFeedback(feedbackId: string, updates: { status?: Feedback['status']; response?: string; responder?: string; text?: string; category?: Feedback['category']; }) {
+    try {
+      const feedbackRef = doc(db, 'attendance_feedback', feedbackId);
+      const updateData: any = {
+        ...updates,
+        updatedAt: Timestamp.now()
+      };
+
+      if (updates.status === 'resolved') {
+        updateData.resolvedAt = Timestamp.now();
+      }
+
+      await updateDoc(feedbackRef, updateData);
+
+      // Clear feedback cache after update
+      feedbackCache.clear();
+    } catch (error) {
+      console.error('Error updating feedback:', error);
+      throw error;
     }
   }
 }

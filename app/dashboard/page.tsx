@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { FirebaseService } from '@/lib/firebase-service';
 import { format, subDays, startOfWeek, endOfWeek } from 'date-fns';
+import FeedbackCard from '@/components/FeedbackCard';
 
 interface DashboardStats {
   totalSessions: number;
@@ -279,6 +280,10 @@ export default function DashboardPage() {
             </div>
           </div>
         </Card>
+        {/* Feedback */}
+        <div className="mt-6">
+          <FeedbackCard isAdminView={isAdmin} />
+        </div>
       </div>
     </div>
   );

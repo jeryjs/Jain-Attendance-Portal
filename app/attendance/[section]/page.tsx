@@ -21,6 +21,7 @@ import { useEffect, useState } from 'react';
 import AttendanceView from './AttendanceView';
 import ConfigureSessionDialog from './ConfigureSessionDialog';
 import PreviousSessions from './PreviousSessions';
+import FeedbackCard from '@/components/FeedbackCard';
 
 export default function SectionAttendancePage() {
   // Router & context
@@ -554,6 +555,10 @@ export default function SectionAttendancePage() {
           isNewSession={!isValidSession || !existingSession}
           onConfirm={handleSessionConfirm}
         />
+        {/* Feedback */}
+        <div className="mt-6">
+          <FeedbackCard isAdminView={isAdminView} />
+        </div>
       </div>
     </div>
   );

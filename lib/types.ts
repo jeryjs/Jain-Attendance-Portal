@@ -93,6 +93,19 @@ export const SECTION_MAPPINGS: { [key: string]: string } = {
 
 export const SECTIONS: string[] = ['AI', 'AIDD', 'AIDE A', 'AIDE B', 'AIML A', 'AIML B', 'AIML C', 'AIML D', 'AIML E', 'ANE', 'ASE', 'BCT', 'CE', 'CPS', 'CSBS', 'CSE A', 'CSE B', 'CSE PWC A', 'CSE PWC B', 'CTIS', 'CTMA', 'CYBER SECURITY', 'DS', 'ECE', 'EEE', 'GEN AI A', 'GEN AI B', 'IOT', 'ISE', 'ME', 'SE'];
 
+export interface Feedback {
+  id: string;
+  text: string;
+  category: 'bug' | 'feature' | 'improvement' | 'question' | 'complaint' | 'other';
+  status: 'open' | 'in_progress' | 'resolved' | 'rejected' | 'closed';
+  author: string;
+  response?: string;
+  responder?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  resolvedAt?: Date;
+}
+
 interface NavItem {
   label: string;
   href: string | (() => string);

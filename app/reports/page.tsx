@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import FeedbackCard from '@/components/FeedbackCard';
 
 export default function ReportsPage() {
   const { user, loading, isTeacher, isAdmin } = useAuth();
@@ -72,21 +73,21 @@ export default function ReportsPage() {
   // Generate Excel export
   const handleExportToExcel = async () => {
     if (!user?.uid || !dateRange.from || !dateRange.to) return;
-    
+
     try {
       setExporting(true);
-      
+
       const sessions = await FirebaseService.getAttendanceSessions({
         teacherId: user.uid,
         section: selectedSection === 'all' ? undefined : selectedSection,
         dateRange: { start: dateRange.from, end: dateRange.to }
       });
-      
+
       if (sessions.length === 0) {
         addToast({ title: "No Data", description: "No attendance sessions found", variant: "default" });
         return;
       }
-      
+
       const excelBlob = await exportToExcel({
         userId: user.uid,
         dateRange,
@@ -94,7 +95,7 @@ export default function ReportsPage() {
         sessions,
         getStudents: FirebaseService.getStudents
       });
-      
+
       // Create download link
       const url = window.URL.createObjectURL(excelBlob);
       const link = document.createElement('a');
@@ -104,17 +105,17 @@ export default function ReportsPage() {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      
+
       addToast({
         title: "Export Successful",
         description: `Report exported successfully`,
         variant: "success"
       });
-      
+
     } catch (error) {
       console.error('Error exporting report:', error);
       addToast({
-        title: "Export Failed", 
+        title: "Export Failed",
         description: "Failed to export attendance report",
         variant: "destructive"
       });
@@ -156,7 +157,7 @@ export default function ReportsPage() {
                   </p>
                 </div>
               </div>
-              
+
               <Button
                 onClick={() => {
                   localStorage.setItem('defaultToAdminView', 'true');
@@ -271,9 +272,13 @@ export default function ReportsPage() {
             Stay tuned for updates!
           </p>
           <span className="inline-block px-3 py-1 rounded-full bg-cyber-yellow/20 text-cyber-yellow-dark text-xs font-medium">
-            Last updated: {format(new Date(), 'MMM dd, yyyy')}
+            Last updated: Sep 16, 2025
           </span>
         </Card>
+
+        <div className='mt-6'>
+          <FeedbackCard isAdminView={isAdmin} />
+        </div>
       </div>
     </div>
   );
