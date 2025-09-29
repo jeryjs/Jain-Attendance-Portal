@@ -695,7 +695,7 @@ export class FirebaseService {
     return sessions;
   }
 
-  static async addStudent(studentData: Omit<Student, 'id'>) {
+  static async addStudent(studentData: Omit<Student, 'id' | 'createdAt'>) {
     try {
       const docRef = await addDoc(collection(db, 'students'), {
         ...studentData,

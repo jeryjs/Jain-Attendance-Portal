@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 interface StudentFormProps {
   student?: Student | null;
   sections: string[];
-  onSubmit: (student: Student | Omit<Student, 'id'>) => void;
+  onSubmit: (student: Student | Omit<Student, 'id' | 'createdAt'>) => void;
   onCancel: () => void;
 }
 

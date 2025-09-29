@@ -143,7 +143,7 @@ export default function AdminStudentsPage() {
   }, [addToast, calculateStats]);
 
   // CRUD operations
-  const handleAddStudent = useCallback(async (studentData: Omit<Student, 'id'>) => {
+  const handleAddStudent = useCallback(async (studentData: Omit<Student, 'id' | 'createdAt'>) => {
     try {
       await FirebaseService.addStudent(studentData);
       const updatedStudents = await FirebaseService.getAdminStudents(true);
@@ -501,7 +501,7 @@ export default function AdminStudentsPage() {
             student={editingStudent}
             sections={SECTIONS}
             onSubmit={editingStudent ?
-              (studentData: Student | Omit<Student, 'id'>) => handleUpdateStudent(studentData as Student) :
+              (studentData: Student | Omit<Student, 'id' | 'createdAt'>) => handleUpdateStudent(studentData as Student) :
               handleAddStudent
             }
             onCancel={() => {
