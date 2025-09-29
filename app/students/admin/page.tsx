@@ -76,8 +76,13 @@ export default function AdminStudentsPage() {
       return acc;
     }, {} as Record<string, number>);
 
-    // Calculate recent additions (last 30 days) - mock for now since we don't have createdAt
-    const recentAdditions = Math.floor(totalStudents * 0.1); // 10% as recent
+    // Calculate recent additions (last 7 days) using createdAt when available
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const recentAdditions = studentsData.filter(student => {
+      const created = new Date(student.createdAt).getTime();
+      return created >= sevenDaysAgo.getTime();
+    }).length;
 
     // Calculate data quality score (students with complete data)
     const completeDataStudents = studentsData.filter(student =>
@@ -269,7 +274,7 @@ export default function AdminStudentsPage() {
     {
       field: 'usn',
       headerName: 'Application Number',
-      width: 150,
+      width: 160,
       fontFamily: 'monospace',
     },
     {
@@ -293,7 +298,7 @@ export default function AdminStudentsPage() {
       headerName: 'Program',
       width: 200,
       flex: 1,
-      valueGetter: (value, row) => SECTION_MAPPINGS[row.section] || row.section,
+      valueGetter: (value, row) => getProgramName(row.section),
     },
     {
       field: 'createdAt',
@@ -408,7 +413,7 @@ export default function AdminStudentsPage() {
               value={stats.recentAdditions}
               icon={TrendingUp}
               color="bg-orange-500"
-              subtitle="Last 30 days"
+              subtitle="Last 7 days"
             />
             <StatsCard
               title="Data Quality"

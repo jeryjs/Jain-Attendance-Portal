@@ -12,7 +12,7 @@ export interface Student {
   name: string;
   usn: string;
   section: string;
-  createdAt?: Date; // Firestore internal document creation date (Date object)
+  createdAt: Date; // Firestore internal document creation date
 }
 
 export interface AttendanceSession {
