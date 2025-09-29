@@ -594,7 +594,7 @@ export class FirebaseService {
     sessionsCache.clear();
   }
 
-  static async getAdminStudents(refetch = false, section?: string) {
+  static async getAdminStudents(refetch = false, section?: string): Promise<Student[]> {
     const CACHE_KEY = 'adminStudentsCache';
     const CACHE_DURATION = 2 * 24 * 60 * 60 * 1000; // 48 hours
 
@@ -613,12 +613,18 @@ export class FirebaseService {
           id: doc.id,
           name: doc.data().name,
           usn: doc.data().usn,
-          section: doc.data().section
+          section: doc.data().section,
+          createdAt: (doc as any)._document.createTime.timestamp.toDate() as Date // Firestore internal field
         }))
       ) as Student[];
       localStorage.setItem(CACHE_KEY, JSON.stringify({ students, timestamp: now }));
     } else {
-      students = cacheObj.students || [];
+      // TODO: Remove this check after 48 hrs (to phase out old cache format)
+      if ((cacheObj?.students || [])[0]?.createdAt) {
+        students = cacheObj.students || [];
+      } else {
+        return this.getAdminStudents(true, section);
+      }
     }
 
     // Apply section filter if provided

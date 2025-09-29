@@ -239,12 +239,13 @@ export default function AdminStudentsPage() {
   // Export functionality
   const handleExportToCSV = useCallback(() => {
     const csvContent = [
-      ['Application Number', 'Name', 'Section', 'Program'],
+      ['Application Number', 'Name', 'Section', 'Program', 'Date Added'],
       ...students.map(student => [
         student.usn,
         student.name,
         student.section,
-        getProgramName(student.section)
+        getProgramName(student.section),
+        format(new Date(student.createdAt as Date), 'yyyy-MM-dd')
       ])
     ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
 
@@ -293,6 +294,12 @@ export default function AdminStudentsPage() {
       width: 200,
       flex: 1,
       valueGetter: (value, row) => SECTION_MAPPINGS[row.section] || row.section,
+    },
+    {
+      field: 'createdAt',
+      headerName: 'Date Added',
+      width: 100,
+      valueGetter: (value, row) => format(new Date(row.createdAt), 'yyyy-MM-dd'),
     },
     {
       field: 'actions',
