@@ -34,6 +34,7 @@ import {
   getRecentSessions,
   parseSessionTime
 } from './utils';
+import { Student } from '@/lib/types';
 
 const StatsCard = memo(({ title, value, icon: Icon, color, subtitle }: {
   title: string;
@@ -194,12 +195,47 @@ export default function AdminReportsPage() {
         addToast({ title: "No Data", description: "No attendance sessions found", variant: "default" });
         return;
       }
+      // Get all students for the selected section
+      const students = await FirebaseService.getAdminStudents(false, selectedSection === 'all' ? undefined : selectedSection);
+
+      // Build a Set of student USNs for fast lookup
+      const studentUSNSet = new Set(students.map(s => s.usn));
+
+      // Collect present USNs and map to section
+      const usnToSection: Record<string, string> = {};
+      sessions.forEach(session =>
+        (session.presentStudents ?? []).forEach(usn => {
+          usnToSection[usn] = session.section;
+        })
+      );
+
+      // Find missing USNs (present in sessions but not in students)
+      const missingUSNs = Object.keys(usnToSection).filter(usn => !studentUSNSet.has(usn));
+
+      // Merge students and missing students
+      const allStudents: Student[] = [
+        ...students,
+        ...missingUSNs.map(usn => ({
+          id: '',
+          name: 'N/A',
+          usn,
+          section: usnToSection[usn] || 'N/A',
+          phone: undefined,
+          createdAt: new Date(),
+        }))
+      ];
+
       const excelBlob = await exportToExcel({
         userId: user.uid,
         dateRange,
         selectedSection,
         sessions,
-        getStudents: (section: string) => FirebaseService.getAdminStudents(false, section)
+        getStudents: async (section: string) => {
+          // Return allStudents for the selected section
+          if (section === 'all' || section === selectedSection) return allStudents;
+          // Otherwise, filter by section
+          return allStudents.filter((stu: any) => stu.section === section);
+        }
       });
       const url = URL.createObjectURL(excelBlob);
       const link = Object.assign(document.createElement('a'), {
