@@ -36,7 +36,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 					// Guest teacher emails (without @jainuniversity.ac.in)
 					const GUEST_TEACHER_EMAILS = [
 						'ishrutihiregoudar@gmail.com',
-						'premamarrahe@gmail.com'
+						'premamarrahe@gmail.com',
+						'sancharinimitra1992@gmail.com',
 					];
 
 					let role: 'student' | 'teacher' | 'admin' = 'student';
