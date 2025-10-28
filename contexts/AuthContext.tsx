@@ -33,11 +33,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 				// If no custom claim for role, set one based on email
 				if (!customClaims?.role) {
 					const ADMIN_EMAILS = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(',').map(email => email.toLowerCase().trim()) || [];
+					// Guest teacher emails (without @jainuniversity.ac.in)
+					const GUEST_TEACHER_EMAILS = [
+						'ishrutihiregoudar@gmail.com',
+						'premamarrahe@gmail.com'
+					];
 
 					let role: 'student' | 'teacher' | 'admin' = 'student';
 					const email = firebaseUser.email || '';
-					if (ADMIN_EMAILS.includes(email.toLowerCase())) {
+					const emailLower = email.toLowerCase();
+					
+					if (ADMIN_EMAILS.includes(emailLower)) {
 						role = 'admin';
+					} else if (GUEST_TEACHER_EMAILS.includes(emailLower)) {
+						// Allow guest teachers with non-university emails
+						role = 'teacher';
 					} else if (/^[a-zA-Z]+\.?[a-zA-Z]+@jainuniversity\.ac\.in$/.test(email)) {
 						role = 'teacher';
 					} else if (/^\d{2}[a-zA-Z]{5}\d{3}@jainuniversity\.ac\.in$/.test(email)) {
