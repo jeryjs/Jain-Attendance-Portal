@@ -8,7 +8,7 @@ import { FirebaseService } from '@/lib/firebase-service';
 import { AttendanceSession } from '@/lib/types';
 import { ArrowLeft, Calendar, CheckCircle, XCircle, User, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { format } from 'date-fns';
 
@@ -19,17 +19,16 @@ interface StudentData {
   phone?: string;
 }
 
-interface AttendanceRecord {
-  date: string;
-  session: string;
+interface AttendanceRecord extends AttendanceSession {
   isPresent: boolean;
-  teacherEmail: string;
-}
+} 
 
 export default function StudentDetailPage({ params }: { params: { usn: string } }) {
-  const { user, loading, isTeacher } = useAuth();
+  const { user, loading, isTeacher, isAdmin } = useAuth();
   const { addToast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isAdminView = searchParams.get('admin') === 'true';
   const [student, setStudent] = useState<StudentData | null>(null);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [loadingData, setLoadingData] = useState(true);
@@ -42,10 +41,10 @@ export default function StudentDetailPage({ params }: { params: { usn: string } 
       try {
         setLoadingData(true);
 
-        // Get all sessions taught by this teacher
-        const sessions = await FirebaseService.getAttendanceSessions({
-          teacherId: user.uid
-        });
+        // Get sessions based on view mode
+        const sessions = isAdminView && isAdmin
+          ? await FirebaseService.getAttendanceSessions({}) // Get all sessions for admin
+          : await FirebaseService.getAttendanceSessions({ teacherId: user.uid });
 
         if (sessions.length === 0) {
           addToast({
@@ -76,10 +75,8 @@ export default function StudentDetailPage({ params }: { params: { usn: string } 
           // Check if this student was in this session
           if (studentData && session.section === studentData.section) {
             records.push({
-              date: session.date,
-              session: session.session,
+              ...session,
               isPresent: session.presentStudents?.includes(params.usn) || false,
-              teacherEmail: session.teacherEmail
             });
           }
         }
@@ -125,7 +122,7 @@ export default function StudentDetailPage({ params }: { params: { usn: string } 
     };
 
     loadStudentData();
-  }, [user?.uid, params.usn, addToast, router]);
+  }, [user?.uid, params.usn, addToast, router, isAdminView, isAdmin]);
 
   if (loading || loadingData) {
     return (
@@ -138,7 +135,7 @@ export default function StudentDetailPage({ params }: { params: { usn: string } 
     );
   }
 
-  if (!user || !isTeacher || !student) {
+  if (!user || (!isTeacher && !isAdmin) || !student) {
     return null;
   }
 
@@ -146,10 +143,10 @@ export default function StudentDetailPage({ params }: { params: { usn: string } 
     <div className="min-h-screen p-2 md:p-6">
       <div className="max-w-5xl mx-auto">
         {/* Back Button */}
-        <Link href="/reports">
+        <Link href={isAdminView ? "/students/admin" : "/reports"}>
           <Button variant="outline" className="mb-4">
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Reports
+            {isAdminView ? 'Back to Student Management' : 'Back to Reports'}
           </Button>
         </Link>
 
@@ -238,12 +235,13 @@ export default function StudentDetailPage({ params }: { params: { usn: string } 
           ) : (
             <div className="space-y-2 max-h-[600px] overflow-y-auto">
               {attendanceRecords.map((record, idx) => (
-                <div
+                <Link
                   key={`${record.date}-${record.session}`}
-                  className={`p-4 rounded-lg border transition-all ${
+                  href={record.id ? `/attendance/${record.section}?date=${record.date}&time=${record.session}` : '#'}
+                  className={`block p-4 rounded-lg border transition-all cursor-pointer ${
                     record.isPresent
-                      ? 'bg-green-50 border-green-200 hover:border-green-300'
-                      : 'bg-red-50 border-red-200 hover:border-red-300'
+                      ? 'bg-green-50 border-green-200 hover:border-green-300 hover:shadow-md'
+                      : 'bg-red-50 border-red-200 hover:border-red-300 hover:shadow-md'
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -274,7 +272,7 @@ export default function StudentDetailPage({ params }: { params: { usn: string } 
                       {record.isPresent ? 'Present' : 'Absent'}
                     </div>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}

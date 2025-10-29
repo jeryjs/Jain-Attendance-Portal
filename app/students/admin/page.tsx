@@ -13,6 +13,7 @@ import {
   ArrowLeft,
   Download,
   Edit as EditIcon,
+  Eye,
   GraduationCap,
   Plus,
   RefreshCw,
@@ -310,8 +311,14 @@ export default function AdminStudentsPage() {
       field: 'actions',
       type: 'actions',
       headerName: 'Actions',
-      width: 120,
+      width: 150,
       getActions: (params: GridRowParams) => [
+        <GridActionsCellItem
+          key="view"
+          icon={<Eye size={16} />}
+          label="View"
+          onClick={() => router.push(`/students/${params.row.usn}?admin=true`)}
+        />,
         <GridActionsCellItem
           key="edit"
           icon={<EditIcon size={16} />}
