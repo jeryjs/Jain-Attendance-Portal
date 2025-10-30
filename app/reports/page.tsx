@@ -79,7 +79,7 @@ export default function ReportsPage() {
   useEffect(() => {
     const loadSections = async () => {
       if (!user?.uid) return;
-      user.uid = "PMY061vYmogZ2bKKB72TQUwQMa33"  // testing with vishal sir's acc
+      // user.uid = "PMY061vYmogZ2bKKB72TQUwQMa33"  // testing with vishal sir's acc
 
       try {
         setLoadingReports(true);
@@ -341,6 +341,29 @@ export default function ReportsPage() {
             </div>
           </Card>
         )}
+
+        {/* Header */}
+        <div className="text-center mb-6 md:mb-12">
+          <div className="flex items-center justify-center mb-3 md:mb-6">
+            <div className="w-12 h-12 md:w-20 md:h-20 bg-gradient-to-br from-cyber-yellow to-cyber-yellow-dark rounded-2xl flex items-center justify-center shadow-2xl shadow-cyber-yellow/25">
+              <BarChart3 className="w-6 h-6 md:w-10 md:h-10 text-cyber-gray-900" />
+            </div>
+          </div>
+
+          <h1 className="text-2xl md:text-4xl lg:text-6xl font-bold mb-2 md:mb-4">
+            <span className="bg-gradient-to-r from-cyber-gray-900 via-cyber-gray-700 to-cyber-gray-900 bg-clip-text text-transparent">
+              Attendance
+            </span>
+            <br />
+            <span className="bg-gradient-to-r from-cyber-yellow to-cyber-yellow-dark bg-clip-text text-transparent">
+              Reports
+            </span>
+          </h1>
+
+          <p className="text-sm md:text-xl text-cyber-gray-600 mb-4 md:mb-8 max-w-2xl mx-auto px-2">
+            Comprehensive analytics and insights for your attendance data
+          </p>
+        </div>
 
         {/* Filters */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-6 mb-4 md:mb-8">
@@ -646,7 +669,7 @@ export default function ReportsPage() {
           </div>
         )}
 
-        <Card variant="cyber" className="mt-8 p-6 text-center flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-cyber-gray-50 to-cyber-gray-100 border-2 border-dashed border-cyber-yellow/40">
+        <Card variant="glass" className="mt-8 p-6 text-center flex flex-col items-center justify-center gap-3 bg-gradient-to-br border-2 border-dashed border-cyber-yellow/40">
           <div className="flex items-center justify-center mb-2">
             <Calendar className="w-8 h-8 text-cyber-yellow-dark animate-pulse" />
           </div>
@@ -658,7 +681,7 @@ export default function ReportsPage() {
             Stay tuned for updates!
           </p>
           <span className="inline-block px-3 py-1 rounded-full bg-cyber-yellow/20 text-cyber-yellow-dark text-xs font-medium">
-            Last updated: Sep 16, 2025
+            Last updated: Oct 29, 2025
           </span>
         </Card>
 
