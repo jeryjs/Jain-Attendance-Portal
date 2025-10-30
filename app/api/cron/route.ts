@@ -274,6 +274,17 @@ async function storeNotifications(
 ): Promise<void> {
   const db = getFirestore(getFirebaseApp());
 
+  // Clean notifications to remove undefined values
+  const cleanNotifications = notifications.map(n => ({
+    usn: n.usn,
+    name: n.name,
+    phone: n.phone,
+    missedSessions: n.missedSessions,
+    guid: n.guid || null,
+    status: n.status,
+    sentAt: n.sentAt ? Timestamp.fromDate(n.sentAt) : null
+  }));
+
   // Store as a single document per date
   const docRef = doc(db, 'attendance_notifications', date);
   
@@ -282,7 +293,7 @@ async function storeNotifications(
     totalNotifications: notifications.length,
     successCount: notifications.filter(n => n.status === 'sent').length,
     failedCount: notifications.filter(n => n.status !== 'sent').length,
-    notifications,
+    notifications: cleanNotifications,
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now()
   });
