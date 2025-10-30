@@ -12,6 +12,7 @@ export interface Student {
   name: string;
   usn: string;
   section: string;
+  phone?: string; // Student's phone number for SMS notifications (10-digit Indian mobile)
   createdAt: Date; // Firestore internal document creation date
 }
 
