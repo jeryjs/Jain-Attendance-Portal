@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AttendanceSession, Student } from '@/lib/types';
 import { initializeApp, getApps } from 'firebase/app';
-import { getFirestore, collection, query, where, getDocs, doc, setDoc, Timestamp, writeBatch } from 'firebase/firestore';
+import { getFirestore, collection, query, where, getDocs, doc, setDoc, Timestamp } from 'firebase/firestore';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -52,8 +52,7 @@ interface SmsResult {
 }
 
 /**
-/**
- * Send SMS notifications via SMS API
+ * Send SMS notifications via SMS API in batches of 100
  */
 async function sendAbsenceNotifications(recipients: SmsRecipient[]): Promise<SmsResult[]> {
   const SMS_DLT_CONFIG = JSON.parse(process.env.SMS_DLT_CONFIG || '{}') as { 
@@ -67,42 +66,99 @@ async function sendAbsenceNotifications(recipients: SmsRecipient[]): Promise<Sms
     throw new Error('SMS_API_KEY not configured');
   }
 
-  const smsResponse = await fetch(`${SMS_DLT_CONFIG.API_URL}/api/sms/send`, {
-    method: 'POST',
-    headers: {
-      'X-API-Key': SMS_DLT_CONFIG.API_KEY,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      template: SMS_DLT_CONFIG.TEMPLATE_TEXT,
-      templateId: SMS_DLT_CONFIG.TEMPLATE_ID,
-      recipients
-    })
-  });
-
-  if (!smsResponse.ok) {
-    const errorText = await smsResponse.text();
-    throw new Error(`SMS API HTTP error: ${smsResponse.status} - ${errorText}`);
+  // Split recipients into batches of 100
+  const BATCH_SIZE = 100;
+  const batches: SmsRecipient[][] = [];
+  for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
+    batches.push(recipients.slice(i, i + BATCH_SIZE));
   }
 
-  const smsResult = await smsResponse.json();
+  console.log(`[CRON] Sending ${recipients.length} SMS in ${batches.length} batches`);
 
-  // Notify vishal sir and me
-  await fetch('https://sms-api.sa-fet.com/api/sms/send', {
-    method: 'POST',
-    headers: {},
-    body: JSON.stringify({
-      template: SMS_DLT_CONFIG.TEMPLATE_TEXT,
-      templateId: SMS_DLT_CONFIG.TEMPLATE_ID,
-      recipients: [
-        { phone: '9629519659', templateVars: [`\n--${smsResult.message}--\n`, `\n--${smsResult.summary}--`] },
-        { phone: '7892908515', templateVars: [`\n--${smsResult.message}--\n`, `\n--${smsResult.summary}--`] }
-      ]
-    }),
-  });
+  const allResults: SmsResult[] = [];
+
+  // Send each batch
+  for (let i = 0; i < batches.length; i++) {
+    const batch = batches[i];
+    console.log(`[CRON] Sending batch ${i + 1}/${batches.length} (${batch.length} recipients)`);
+
+    try {
+      const smsResponse = await fetch(`${SMS_DLT_CONFIG.API_URL}/api/sms/send`, {
+        method: 'POST',
+        headers: {
+          'X-API-Key': SMS_DLT_CONFIG.API_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          template: SMS_DLT_CONFIG.TEMPLATE_TEXT,
+          templateid: SMS_DLT_CONFIG.TEMPLATE_ID,
+          recipients: batch
+        })
+      });
+
+      if (!smsResponse.ok) {
+        const errorText = await smsResponse.text();
+        console.error(`[CRON] Batch ${i + 1} failed: ${errorText}`);
+        
+        // Add failed results for this batch
+        batch.forEach(r => {
+          allResults.push({
+            phone: r.phone,
+            success: false,
+            error: `Batch failed: ${errorText}`
+          });
+        });
+        continue;
+      }
+
+      const smsResult = await smsResponse.json();
+      allResults.push(...(smsResult.results || []));
+      
+      console.log(`[CRON] Batch ${i + 1} completed: ${smsResult.summary?.successful || 0} sent, ${smsResult.summary?.failed || 0} failed`);
+
+      // Small delay between batches to avoid rate limiting
+      if (i < batches.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    } catch (error) {
+      console.error(`[CRON] Batch ${i + 1} error:`, error);
+      
+      // Add failed results for this batch
+      batch.forEach(r => {
+        allResults.push({
+          phone: r.phone,
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      });
+    }
+  }
+
+  // Notify me and vishal sir with summary (hacky method)
+  const successCount = allResults.filter(r => r.success).length;
+  const failedCount = allResults.length - successCount;
   
-  // Return results from SMS API
-  return smsResult.results || [];
+  try {
+    await fetch(`${SMS_DLT_CONFIG.API_URL}/api/sms/send`, {
+      method: 'POST',
+      headers: {
+        'X-API-Key': SMS_DLT_CONFIG.API_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        template: SMS_DLT_CONFIG.TEMPLATE_TEXT,
+        templateid: SMS_DLT_CONFIG.TEMPLATE_ID,
+        recipients: [
+          { phone: '9629519659', templateVars: [`\n--Success: ${successCount.toString()}--\n`, `\n--Failed: ${failedCount.toString()}--`] },
+          { phone: '7892908515', templateVars: [`\n--Success: ${successCount.toString()}--\n`, `\n--Failed: ${failedCount.toString()}--`] }
+        ]
+      })
+    });
+  } catch (error) {
+    console.error('[CRON] Failed to send admin notification:', error);
+  }
+  
+  return allResults;
 }
 /**
  * Process absences for a specific date
