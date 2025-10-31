@@ -72,49 +72,49 @@ async function getAuthToken() {
   // Create a promise for this token refresh
   tokenRefreshPromise = (async () => {
     try {
-    const response = await fetch(tokenUrl, {
-      method: 'POST',
-      headers: {
-        'apikey': API_KEY,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ old_token: cachedToken.token || '' }),
-    });
+      const response = await fetch(tokenUrl, {
+        method: 'POST',
+        headers: {
+          'apikey': API_KEY,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ old_token: cachedToken.token || '' }),
+      });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to get auth token: ${response.status} ${errorText}`);
-    }
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to get auth token: ${response.status} ${errorText}`);
+      }
 
-    const data = await response.json();
-    const token = data.token;
+      const data = await response.json();
+      const token = data.token;
 
-    if (!token) {
-      throw new Error('Token not found in API response');
-    }
+      if (!token) {
+        throw new Error('Token not found in API response');
+      }
 
-    // Enable the token
-    const enableResponse = await fetch(
-      `${API_BASE_URL}/api/sendsms/token?action=enable&token=${token}`,
-      { method: 'GET', headers: { 'apikey': API_KEY } }
-    );
+      // Enable the token
+      const enableResponse = await fetch(
+        `${API_BASE_URL}/api/sendsms/token?action=enable&token=${token}`,
+        { method: 'GET', headers: { 'apikey': API_KEY } }
+      );
 
-    if (!enableResponse.ok) {
-      console.warn('[SMS] Error: Failed to enable token...');
-      const errorText = await enableResponse.text();
-      throw new Error(`Failed to enable token: ${enableResponse.status} ${errorText}`);
-    }
-    
-    
-    // Cache for 6 days (safe margin, docs say 7 days)
-    const expiryTimestamp = Date.now() + (6 * 24 * 60 * 60 * 1000);
-    cachedToken = { token, expiry: expiryTimestamp };
-    
-    // Persist to disk
-    saveTokenToDisk(cachedToken);
+      if (!enableResponse.ok) {
+        console.warn('[SMS] Error: Failed to enable token...');
+        const errorText = await enableResponse.text();
+        throw new Error(`Failed to enable token: ${enableResponse.status} ${errorText}`);
+      }
 
-    console.log('[SMS] Successfully cached new auth token');
-    return token;
+
+      // Cache for 6 days (safe margin, docs say 7 days)
+      const expiryTimestamp = Date.now() + (6 * 24 * 60 * 60 * 1000);
+      cachedToken = { token, expiry: expiryTimestamp };
+
+      // Persist to disk
+      saveTokenToDisk(cachedToken);
+
+      console.log('[SMS] Successfully cached new auth token');
+      return token;
     } catch (error) {
       console.error('[SMS] Error fetching auth token:', error);
       throw error;
@@ -167,14 +167,14 @@ function parsePragatiResponse(responseText, recipientCount) {
   const guidMatch = responseText.match(/guid=([^&]+)/);
   const errorCodesMatch = responseText.match(/errorcode=([^&]+)/);
   const seqnosMatch = responseText.match(/seqno=([^&]+)/);
-  
+
   const guid = guidMatch ? guidMatch[1] : null;
   const errorCodesStr = errorCodesMatch ? errorCodesMatch[1] : '0';
   const seqnos = seqnosMatch ? seqnosMatch[1].split(',') : [];
-  
+
   // Split comma-separated error codes
   const errorCodes = errorCodesStr.split(',');
-  
+
   const errorMessages = {
     '1': 'Invalid Receiver - Mobile number is invalid or greater than 16 digits',
     '2': 'Invalid Sender - Wrong sender ID or greater than 16 digits',
@@ -186,7 +186,7 @@ function parsePragatiResponse(responseText, recipientCount) {
     '8': 'Empty Receiver - No recipient number provided',
     '14': 'Non-compliant message - Violates TRAI guidelines or template mismatch'
   };
-  
+
   // Return array of results for each recipient
   return errorCodes.map((code, index) => ({
     success: code === '0',
@@ -214,6 +214,9 @@ function parsePragatiResponse(responseText, recipientCount) {
  */
 async function sendBulkSMS(req, res, next) {
   try {
+    const requestId = Math.random().toString(36).substring(7);
+    console.log(`[SMS][${requestId}] === NEW REQUEST ===`);
+
     const { template, templateid, recipients } = req.body;
 
     // Validation
@@ -261,11 +264,11 @@ async function sendBulkSMS(req, res, next) {
 
     // Group recipients by message content for bulk efficiency
     const groupedByMessage = {};
-    
+
     for (const recipient of recipients) {
-      const messageText = recipient.message || 
+      const messageText = recipient.message ||
         (template ? applyTemplate(template, recipient.templateVars || []) : '');
-      
+
       if (!groupedByMessage[messageText]) {
         groupedByMessage[messageText] = [];
       }
@@ -288,7 +291,7 @@ async function sendBulkSMS(req, res, next) {
       }
     }
 
-    console.log(`[SMS] Processing ${recipients.length} recipients in ${batches.length} batches`);
+    console.log(`[SMS][${requestId}] Processing ${recipients.length} recipients in ${batches.length} batches`);
 
     // Send each batch
     for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
@@ -306,8 +309,8 @@ async function sendBulkSMS(req, res, next) {
       });
 
       try {
-        console.log(`[SMS] Batch ${batchIndex + 1}/${batches.length}: Sending to ${group.length} recipients`);
-        
+        console.log(`[SMS][${requestId}] Batch ${batchIndex + 1}/${batches.length}: Sending to ${group.length} recipients`);
+
         const response = await fetch(`${API_BASE_URL}/sendsms?${params.toString()}`, {
           method: 'GET',
           headers: {
@@ -319,7 +322,7 @@ async function sendBulkSMS(req, res, next) {
         const parsedResults = parsePragatiResponse(responseText, group.length);
 
         if (!response.ok) {
-          console.error(`[SMS] HTTP Error: ${response.status}`);
+          console.error(`[SMS][${requestId}] HTTP Error: ${response.status}`);
           group.forEach(recipient => {
             results.push({
               phone: recipient.phone,
@@ -331,16 +334,16 @@ async function sendBulkSMS(req, res, next) {
           // Match each parsed result to each recipient
           const successCount = parsedResults.filter(r => r.success).length;
           const failedCount = parsedResults.length - successCount;
-          
+
           if (failedCount > 0) {
-            console.log(`[SMS] Partial success: ${successCount} sent, ${failedCount} failed | Response: ${responseText.split('&seqno=')[0]}`);
+            console.log(`[SMS][${requestId}] Partial success: ${successCount} sent, ${failedCount} failed | Response: ${responseText.split('&seqno=')[0]}`);
           } else {
-            console.log(`[SMS] All ${successCount} SMS sent successfully | Response: ${responseText.split('&seqno=')[0]}`);
+            console.log(`[SMS][${requestId}] All ${successCount} SMS sent successfully | Response: ${responseText.split('&seqno=')[0]}`);
           }
-          
+
           group.forEach((recipient, index) => {
             const parsed = parsedResults[index] || parsedResults[0]; // Fallback to first if mismatch
-            
+
             if (parsed.success) {
               results.push({
                 phone: recipient.phone,
@@ -349,7 +352,7 @@ async function sendBulkSMS(req, res, next) {
                 seqno: parsed.seqno
               });
             } else {
-              console.error(`[SMS] Error for ${recipient.phone}: [${parsed.errorCode}] ${parsed.errorMessage}`);
+              console.error(`[SMS][${requestId}] Error for ${recipient.phone}: [${parsed.errorCode}] ${parsed.errorMessage}`);
               results.push({
                 phone: recipient.phone,
                 success: false,
@@ -360,8 +363,8 @@ async function sendBulkSMS(req, res, next) {
           });
         }
       } catch (error) {
-        console.error(`[SMS] Send error:`, error);
-        
+        console.error(`[SMS][${requestId}] Send error:`, error);
+
         group.forEach(recipient => {
           results.push({
             phone: recipient.phone,
