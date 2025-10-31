@@ -157,17 +157,23 @@ function formatPhoneWithCountryCode(phone) {
 }
 
 /**
- * Parse Pragati API response
- * Response format: guid=...&errorcode=14&seqno=...
+ * Parse Pragati API response with comma-separated error codes
+ * Response format: guid=...&errorcode=0,0,7,0&seqno=919...,919...
  * @param {string} responseText - Raw response from Pragati API
- * @returns {{success: boolean, guid: string|null, errorCode: string, errorMessage: string|null}}
+ * @param {number} recipientCount - Number of recipients in the request
+ * @returns {Array<{success: boolean, guid: string|null, errorCode: string, errorMessage: string|null, seqno: string|null}>}
  */
-function parsePragatiResponse(responseText) {
+function parsePragatiResponse(responseText, recipientCount) {
   const guidMatch = responseText.match(/guid=([^&]+)/);
-  const errorCodeMatch = responseText.match(/errorcode=(\d+)/);
+  const errorCodesMatch = responseText.match(/errorcode=([^&]+)/);
+  const seqnosMatch = responseText.match(/seqno=([^&]+)/);
   
   const guid = guidMatch ? guidMatch[1] : null;
-  const errorCode = errorCodeMatch ? errorCodeMatch[1] : null;
+  const errorCodesStr = errorCodesMatch ? errorCodesMatch[1] : '0';
+  const seqnos = seqnosMatch ? seqnosMatch[1].split(',') : [];
+  
+  // Split comma-separated error codes
+  const errorCodes = errorCodesStr.split(',');
   
   const errorMessages = {
     '1': 'Invalid Receiver - Mobile number is invalid or greater than 16 digits',
@@ -181,14 +187,14 @@ function parsePragatiResponse(responseText) {
     '14': 'Non-compliant message - Violates TRAI guidelines or template mismatch'
   };
   
-  const isError = errorCode && errorCode !== '0';
-  
-  return {
-    success: !isError,
-    guid,
-    errorCode: errorCode || '0',
-    errorMessage: isError ? (errorMessages[errorCode] || `Unknown error code: ${errorCode}`) : null
-  };
+  // Return array of results for each recipient
+  return errorCodes.map((code, index) => ({
+    success: code === '0',
+    guid: code === '0' ? guid : null,
+    errorCode: code,
+    errorMessage: code !== '0' ? (errorMessages[code] || `Unknown error code: ${code}`) : null,
+    seqno: seqnos[index] || null
+  }));
 }
 
 /**
@@ -281,7 +287,7 @@ async function sendBulkSMS(req, res, next) {
       });
 
       try {
-        console.log(`[SMS] Sending to ${group.length} recipients`);
+        console.log(`[SMS] Sending to ${group.length} recipients for batch ${Array.from(Object.keys(groupedByMessage)).indexOf(messageText)}`);
         
         const response = await fetch(`${API_BASE_URL}/sendsms?${params.toString()}`, {
           method: 'GET',
@@ -291,7 +297,7 @@ async function sendBulkSMS(req, res, next) {
         });
 
         const responseText = await response.text();
-        const parsed = parsePragatiResponse(responseText);
+        const parsedResults = parsePragatiResponse(responseText, group.length);
 
         if (!response.ok) {
           console.error(`[SMS] HTTP Error: ${response.status}`);
@@ -299,27 +305,39 @@ async function sendBulkSMS(req, res, next) {
             results.push({
               phone: recipient.phone,
               success: false,
-              error: `HTTP ${response.status}: ${parsed.errorMessage || responseText}`
-            });
-          });
-        } else if (!parsed.success) {
-          console.error(`[SMS] Pragati Error [${parsed.errorCode}]: ${parsed.errorMessage}`);
-          group.forEach(recipient => {
-            results.push({
-              phone: recipient.phone,
-              success: false,
-              error: parsed.errorMessage,
-              errorCode: parsed.errorCode
+              error: `HTTP ${response.status}: ${responseText}`
             });
           });
         } else {
-          console.log(`[SMS] Success: ${responseText}`);
-          group.forEach(recipient => {
-            results.push({
-              phone: recipient.phone,
-              success: true,
-              guid: parsed.guid
-            });
+          // Match each parsed result to each recipient
+          const successCount = parsedResults.filter(r => r.success).length;
+          const failedCount = parsedResults.length - successCount;
+          
+          if (failedCount > 0) {
+            console.log(`[SMS] Partial success: ${successCount} sent, ${failedCount} failed`);
+          } else {
+            console.log(`[SMS] All ${successCount} SMS sent successfully`);
+          }
+          
+          group.forEach((recipient, index) => {
+            const parsed = parsedResults[index] || parsedResults[0]; // Fallback to first if mismatch
+            
+            if (parsed.success) {
+              results.push({
+                phone: recipient.phone,
+                success: true,
+                guid: parsed.guid,
+                seqno: parsed.seqno
+              });
+            } else {
+              console.error(`[SMS] Error for ${recipient.phone}: [${parsed.errorCode}] ${parsed.errorMessage}`);
+              results.push({
+                phone: recipient.phone,
+                success: false,
+                error: parsed.errorMessage,
+                errorCode: parsed.errorCode
+              });
+            }
           });
         }
       } catch (error) {
