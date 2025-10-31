@@ -333,9 +333,9 @@ async function sendBulkSMS(req, res, next) {
           const failedCount = parsedResults.length - successCount;
           
           if (failedCount > 0) {
-            console.log(`[SMS] Partial success: ${successCount} sent, ${failedCount} failed`);
+            console.log(`[SMS] Partial success: ${successCount} sent, ${failedCount} failed | Response: ${responseText.split('&seqno=')[0]}`);
           } else {
-            console.log(`[SMS] All ${successCount} SMS sent successfully`);
+            console.log(`[SMS] All ${successCount} SMS sent successfully | Response: ${responseText.split('&seqno=')[0]}`);
           }
           
           group.forEach((recipient, index) => {
