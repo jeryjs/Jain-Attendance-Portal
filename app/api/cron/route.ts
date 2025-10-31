@@ -66,8 +66,8 @@ async function sendAbsenceNotifications(recipients: SmsRecipient[]): Promise<Sms
     throw new Error('SMS_API_KEY not configured');
   }
 
-  // Split recipients into batches of 100
-  const BATCH_SIZE = 100;
+  // Split recipients into batches of 1000
+  const BATCH_SIZE = 1000;
   const batches: SmsRecipient[][] = [];
   for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
     batches.push(recipients.slice(i, i + BATCH_SIZE));
