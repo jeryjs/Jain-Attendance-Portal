@@ -224,10 +224,10 @@ async function sendBulkSMS(req, res, next) {
       });
     }
 
-    if (recipients.length > 100) {
+    if (recipients.length > 1000) {
       return res.status(400).json({
         error: 'Too many recipients',
-        message: 'Maximum 100 recipients per request'
+        message: 'Maximum 1000 recipients per request'
       });
     }
 
@@ -272,8 +272,27 @@ async function sendBulkSMS(req, res, next) {
       groupedByMessage[messageText].push(recipient);
     }
 
-    // Send each group
+    // Split groups larger than 100 into batches (Pragati API limit)
+    const batches = [];
     for (const [messageText, group] of Object.entries(groupedByMessage)) {
+      if (group.length <= 100) {
+        batches.push({ messageText, recipients: group });
+      } else {
+        // Split into chunks of 100
+        for (let i = 0; i < group.length; i += 100) {
+          batches.push({
+            messageText,
+            recipients: group.slice(i, i + 100)
+          });
+        }
+      }
+    }
+
+    console.log(`[SMS] Processing ${recipients.length} recipients in ${batches.length} batches`);
+
+    // Send each batch
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+      const { messageText, recipients: group } = batches[batchIndex];
       const phoneNumbers = group
         .map(r => formatPhoneWithCountryCode(r.phone))
         .join(',');
@@ -287,7 +306,7 @@ async function sendBulkSMS(req, res, next) {
       });
 
       try {
-        console.log(`[SMS] Sending to ${group.length} recipients for batch ${Array.from(Object.keys(groupedByMessage)).indexOf(messageText)}`);
+        console.log(`[SMS] Batch ${batchIndex + 1}/${batches.length}: Sending to ${group.length} recipients`);
         
         const response = await fetch(`${API_BASE_URL}/sendsms?${params.toString()}`, {
           method: 'GET',
