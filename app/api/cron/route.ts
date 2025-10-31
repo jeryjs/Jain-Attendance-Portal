@@ -1,6 +1,6 @@
 // app/api/cron/route.ts
 // Cron job to send absence notifications via SMS
-// Runs daily at 11 AM UTC (5:00 PM IST) via Vercel Cron
+// Runs daily at 11 AM UTC (4:30 PM IST) via Vercel Cron
 
 import { NextRequest, NextResponse } from 'next/server';
 import { AttendanceSession, Student } from '@/lib/types';
@@ -33,6 +33,7 @@ interface AbsenceNotification {
   name: string;
   phone: string;
   missedSessions: string[];
+  totalSessions: number;
   guid?: string;
   status: string; 
   sentAt?: Date;
@@ -256,6 +257,7 @@ async function processAbsencesForDate(date: string): Promise<AbsenceNotification
         name: student.name,
         phone: student.phone,
         missedSessions,
+        totalSessions: sectionSessions.length,
         status: 'pending'
       });
     }
@@ -280,6 +282,7 @@ async function storeNotifications(
     name: n.name,
     phone: n.phone,
     missedSessions: n.missedSessions,
+    totalSessions: n.totalSessions,
     guid: n.guid || null,
     status: n.status,
     sentAt: n.sentAt ? Timestamp.fromDate(n.sentAt) : null
@@ -356,7 +359,7 @@ export async function GET(request: NextRequest) {
     const recipients: SmsRecipient[] = notifications.map(n => ({
       phone: n.phone,
       templateVars: [
-        n.missedSessions.length.toString(),
+        `${n.missedSessions.length} out of ${n.totalSessions}`,
         targetDate.split('-').reverse().map((part, i) => i === 0 ? part.slice(-2) : part).join('/') // yyyy-mm-dd to dd/mm/yyyy
       ]
     }));
