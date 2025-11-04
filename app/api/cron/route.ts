@@ -356,13 +356,15 @@ export async function GET(request: NextRequest) {
     }
 
     // Step 2: Send SMS notifications
-    const recipients: SmsRecipient[] = notifications.map(n => ({
-      phone: n.phone,
-      templateVars: [
-        `${n.missedSessions.length} out of ${n.totalSessions}`,
-        targetDate.split('-').reverse().map((part, i) => i === 0 ? part.slice(-2) : part).join('/') // yyyy-mm-dd to dd/mm/yyyy
-      ]
-    }));
+    const recipients: SmsRecipient[] = notifications
+      .filter(n => /^[6-9]\d{9}$/.test(n.phone.replace(/\D/g, ''))) // Only include recipients with valid phone numbers
+      .map(n => ({
+        phone: n.phone,
+        templateVars: [
+          `${n.missedSessions.length} out of ${n.totalSessions}`,
+          targetDate.split('-').reverse().map((part, i) => i === 0 ? part.slice(-2) : part).join('/') // yyyy-mm-dd to dd/mm/yyyy
+        ]
+      }));
 
     console.log(`[CRON] Sending ${recipients.length} SMS notifications...`);
     const smsResults = await sendAbsenceNotifications(recipients);
