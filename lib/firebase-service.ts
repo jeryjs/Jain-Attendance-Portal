@@ -19,6 +19,7 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { AttendanceSession, Feedback, Student } from './types';
+import { idbGetItem, idbRemoveItem, idbSetItem } from './idb-util';
 
 // Cache for student data
 const studentsCache = new Map<string, { data: any[], timestamp: number }>();
@@ -605,7 +606,7 @@ export class FirebaseService {
     const now = Date.now();
 
     // Read cache object from localStorage
-    const cacheObj = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+    const cacheObj = await idbGetItem(CACHE_KEY).then(data => JSON.parse(data || '{}'));
     const cachedTimestamp = cacheObj.timestamp;
     const isCacheValid = cachedTimestamp && (now - cachedTimestamp) < CACHE_DURATION;
 
@@ -620,7 +621,7 @@ export class FirebaseService {
           createdAt: (doc as any)._document.createTime.timestamp.toDate() as Date // Firestore internal field
         }))
       ) as Student[];
-      localStorage.setItem(CACHE_KEY, JSON.stringify({ students, timestamp: now }));
+      await idbSetItem(CACHE_KEY, JSON.stringify({ students, timestamp: now }));
     } else {
       // TODO: Remove this check after 48 hrs (to phase out old cache format)
       if ((cacheObj?.students || [])[0]?.createdAt) {
@@ -649,7 +650,7 @@ export class FirebaseService {
     const now = Date.now();
 
     // Read cache object from localStorage
-    const cacheObj = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+    const cacheObj = await idbGetItem(CACHE_KEY).then(data => JSON.parse(data || '{}'));
     const cachedTimestamp = cacheObj.timestamp;
     const isCacheValid = cachedTimestamp && (now - cachedTimestamp) < CACHE_DURATION;
 
@@ -658,7 +659,7 @@ export class FirebaseService {
       sessions = await getDocs(query(collection(db, 'attendance_sessions'), orderBy('date'))).then(snapshot =>
         snapshot.docs.map(doc => ({ id: doc.id, ...doc.data()}))
       ) as AttendanceSession[];
-      localStorage.setItem(CACHE_KEY, JSON.stringify({ sessions, timestamp: now }));
+      await idbSetItem(CACHE_KEY, JSON.stringify({ sessions, timestamp: now }));
     } else {
       sessions = cacheObj.sessions || [];
     }
@@ -708,7 +709,7 @@ export class FirebaseService {
 
       // Clear cache
       studentsCache.clear();
-      localStorage.removeItem('adminStudentsCache');
+      await idbRemoveItem('adminStudentsCache');
 
       return docRef.id;
     } catch (error) {
@@ -727,7 +728,7 @@ export class FirebaseService {
 
       // Clear cache
       studentsCache.clear();
-      localStorage.removeItem('adminStudentsCache');
+      await idbRemoveItem('adminStudentsCache');
 
       return studentId;
     } catch (error) {
@@ -743,7 +744,7 @@ export class FirebaseService {
 
       // Clear cache
       studentsCache.clear();
-      localStorage.removeItem('adminStudentsCache');
+      await idbRemoveItem('adminStudentsCache');
 
       return studentId;
     } catch (error) {
@@ -772,7 +773,7 @@ export class FirebaseService {
 
       // Clear cache
       studentsCache.clear();
-      localStorage.removeItem('adminStudentsCache');
+      await idbRemoveItem('adminStudentsCache');
 
       return results;
     } catch (error) {

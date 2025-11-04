@@ -27,6 +27,7 @@ import { useRouter } from 'next/navigation';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import StudentForm from './StudentForm';
 import { StudentStats } from './types';
+import { idbGetItem } from '@/lib/idb-util';
 
 const StatsCard = memo(({ title, value, icon: Icon, color, subtitle }: {
   title: string;
@@ -61,6 +62,13 @@ export default function AdminStudentsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [stats, setStats] = useState<StudentStats | null>(null);
+  const [studentsCache, setStudentsCache] = useState<any>(null);
+
+  useEffect(() => {
+    idbGetItem('adminStudentsCache').then(data => 
+      setStudentsCache(JSON.parse(data || '{}'))
+    );
+  }, []);
 
   // Create selection model for DataGrid
   const selectionModel = useMemo(() => ({
@@ -381,7 +389,7 @@ export default function AdminStudentsPage() {
             <div className="text-right text-sm">
               <p className="text-purple-600">Last updated</p>
               <p className="font-medium text-purple-800">
-                {format((JSON.parse(localStorage.getItem('adminStudentsCache') || '{}')).timestamp || new Date(), 'MMM dd, HH:mm')}
+                {format((studentsCache?.timestamp || new Date()), 'MMM dd, HH:mm')}
               </p>
             </div>
 

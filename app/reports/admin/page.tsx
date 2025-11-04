@@ -35,6 +35,7 @@ import {
   parseSessionTime
 } from './utils';
 import { Student } from '@/lib/types';
+import { idbGetItem } from '@/lib/idb-util';
 
 const StatsCard = memo(({ title, value, icon: Icon, color, subtitle }: {
   title: string;
@@ -137,8 +138,9 @@ export default function AdminReportsPage() {
           uniqueSections: uniqueSections.length
         });
 
-        setLastFetched(JSON.parse(localStorage.getItem('adminAttendanceSessionsCache') || '').timestamp || new Date());
-
+        await idbGetItem('adminAttendanceSessionsCache').then(data => 
+          setLastFetched(JSON.parse(data || '').timestamp || new Date())
+        );
       } catch (error) {
         console.error('Error loading admin data:', error);
         addToast({
