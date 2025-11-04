@@ -4,10 +4,10 @@ const DB_NAME = 'jain-attendance-portal';
 const STORE_NAME = 'admin-cache';
 const DB_VERSION = 1;
 
-// Clear old localStorage cache on module load
-if (window !== undefined && window.localStorage !== undefined && window.indexedDB) {
-  localStorage.removeItem('adminStudentsCache');
-  localStorage.removeItem('adminAttendanceSessionsCache');
+// Clear old localStorage cache on module load (browser only)
+if (typeof window !== 'undefined' && window.localStorage) {
+    localStorage.removeItem('adminStudentsCache');
+    localStorage.removeItem('adminAttendanceSessionsCache');
 }
 
 function openDB(): Promise<IDBDatabase> {
