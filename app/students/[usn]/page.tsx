@@ -43,7 +43,7 @@ export default function StudentDetailPage({ params }: { params: { usn: string } 
 
         // Get sessions based on view mode
         const sessions = isAdminView && isAdmin
-          ? await FirebaseService.getAttendanceSessions({}) // Get all sessions for admin
+          ? await FirebaseService.getAdminAttendanceSessions() // Get all sessions for admin
           : await FirebaseService.getAttendanceSessions({ teacherId: user.uid });
 
         if (sessions.length === 0) {
@@ -59,25 +59,34 @@ export default function StudentDetailPage({ params }: { params: { usn: string } 
         // Find which section this student belongs to
         let studentData: StudentData | null = null;
         const records: AttendanceRecord[] = [];
-        const sectionsChecked = new Set<string>();
 
-        for (const session of sessions) {
-          if (!sectionsChecked.has(session.section)) {
-            const students = await FirebaseService.getStudents(session.section);
-            const found = students.find(s => s.usn === params.usn);
-            
+        // Fetch students based on view mode
+        if (isAdminView && isAdmin) {
+          // Admin: fetch ALL students once
+          const allStudents = await FirebaseService.getAdminStudents();
+          studentData = allStudents.find(s => s.id === params.usn) || null;
+        } else {
+          // Non-admin: fetch per section until found
+          const allSections = Array.from(new Set(sessions.map(s => s.section)));
+          for (const section of allSections) {
+            const students = await FirebaseService.getStudents(section);
+            const found = students.find(s => s.id === params.usn);
             if (found) {
               studentData = found;
-              sectionsChecked.add(session.section);
+              break;
             }
           }
+        }
 
-          // Check if this student was in this session
-          if (studentData && session.section === studentData.section) {
-            records.push({
-              ...session,
-              isPresent: session.presentStudents?.includes(params.usn) || false,
-            });
+        // If student found, collect all their attendance records
+        if (studentData) {
+          for (const session of sessions) {
+            if (session.section === studentData.section) {
+              records.push({
+                ...session,
+                isPresent: session.presentStudents?.includes(params.usn) || false,
+              });
+            }
           }
         }
 
@@ -225,6 +234,23 @@ export default function StudentDetailPage({ params }: { params: { usn: string } 
             </div>
           </Card>
         </div>
+
+        {/* Data Scope Alert */}
+        {!isAdminView && (
+          <Card variant="cyber" className="p-4 mb-6 border-l-4 bg-purple-50/20">
+            <div className="flex items-start gap-3">
+              <div className="w-5 h-5 bg-cyber-yellow rounded-full flex items-center justify-center mt-0.5 flex-shrink-0">
+                <span className="text-xs font-bold">i</span>
+              </div>
+              <div>
+                <p className="text-sm font-medium">Limited View</p>
+                <p className="text-sm">
+                  This attendance record displays data only from sessions you have conducted. For a complete attendance history across all instructors, contact the administration.
+                </p>
+              </div>
+            </div>
+          </Card>
+        )}
 
         {/* Attendance Records */}
         <Card variant="cyber" className="p-6">

@@ -5,7 +5,7 @@ const STORE_NAME = 'admin-cache';
 const DB_VERSION = 1;
 
 // Clear old localStorage cache on module load
-if (window.localStorage !== undefined && window.indexedDB) {
+if (window !== undefined && window.localStorage !== undefined && window.indexedDB) {
   localStorage.removeItem('adminStudentsCache');
   localStorage.removeItem('adminAttendanceSessionsCache');
 }
