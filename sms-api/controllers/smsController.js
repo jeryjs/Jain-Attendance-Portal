@@ -96,7 +96,7 @@ async function getAuthToken() {
       // Enable the token
       const enableResponse = await fetch(
         `${API_BASE_URL}/api/sendsms/token?action=enable&token=${token}`,
-        { method: 'GET', headers: { 'apikey': API_KEY } }
+        { method: 'POST', headers: { 'apikey': API_KEY } }
       );
 
       if (!enableResponse.ok) {
