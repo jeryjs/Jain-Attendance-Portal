@@ -39,6 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 						'premamarrahe@gmail.com',
 						'sancharinimitra1992@gmail.com',
 						'blavanya562@gmail.com',
+						'lakshmi.d20@gmail.com',
 					];
 
 					let role: 'student' | 'teacher' | 'admin' = 'student';
