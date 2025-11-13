@@ -64,13 +64,13 @@ export default function StudentDetailPage({ params }: { params: { usn: string } 
         if (isAdminView && isAdmin) {
           // Admin: fetch ALL students once
           const allStudents = await FirebaseService.getAdminStudents();
-          studentData = allStudents.find(s => s.id === params.usn) || null;
+          studentData = allStudents.find(s => s.usn === params.usn) || null;
         } else {
           // Non-admin: fetch per section until found
           const allSections = Array.from(new Set(sessions.map(s => s.section)));
           for (const section of allSections) {
             const students = await FirebaseService.getStudents(section);
-            const found = students.find(s => s.id === params.usn);
+            const found = students.find(s => s.usn === params.usn);
             if (found) {
               studentData = found;
               break;
