@@ -1,5 +1,6 @@
 'use client';
 
+import FeedbackCard from '@/components/FeedbackCard';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { DatePicker, DateRange } from "@/components/ui/date-picker";
@@ -7,44 +8,42 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { FirebaseService } from '@/lib/firebase-service';
-import { exportToExcel } from '@/lib/utils';
+import { AttendanceSession } from '@/lib/types';
+import { exportToExcel, getProgramName } from '@/lib/utils';
 import { format } from 'date-fns';
 import {
+  ArrowRight,
   BarChart3,
   Calendar,
-  FileSpreadsheet,
-  Crown,
-  ArrowRight,
-  User,
-  Users,
   Clock,
+  Crown,
+  FileSpreadsheet,
+  Loader2,
   Percent,
-  RefreshCw,
-  Loader2
+  User,
+  Users
 } from 'lucide-react';
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import FeedbackCard from '@/components/FeedbackCard';
-import { AttendanceSession } from '@/lib/types';
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 // Modular Components
-import WeeklyTrendChart from './components/WeeklyTrendChart';
-import SessionTypeChart from './components/SessionTypeChart';
-import SectionComparisonChart from './components/SectionComparisonChart';
 import AttendanceHeatmap from './components/AttendanceHeatmap';
-import TopBottomPerformers from './components/TopBottomPerformers';
+import SectionComparisonChart from './components/SectionComparisonChart';
+import SessionTypeChart from './components/SessionTypeChart';
 import ShimmerCard, { ShimmerStat } from './components/ShimmerCard';
+import TopBottomPerformers from './components/TopBottomPerformers';
+import WeeklyTrendChart from './components/WeeklyTrendChart';
 
 // Analytics Utilities
 import {
   calculateOverallStats,
-  calculateWeeklyData,
   calculateSectionData,
+  calculateWeeklyData,
   getTopBottomPerformers,
+  type OverallStats,
   type SectionData,
-  type StudentAttendance,
-  type OverallStats
+  type StudentAttendance
 } from './utils/analyticsCalculations';
 
 export default function ReportsPage() {
@@ -64,7 +63,7 @@ export default function ReportsPage() {
   const [overallStats, setOverallStats] = useState<OverallStats | null>(null);
   const [allSessions, setAllSessions] = useState<AttendanceSession[]>([]);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
-  
+
   // Student list with infinite scroll
   const [displayedStudents, setDisplayedStudents] = useState<StudentAttendance[]>([]);
   const [studentPage, setStudentPage] = useState(1);
@@ -85,7 +84,6 @@ export default function ReportsPage() {
   useEffect(() => {
     const loadSessions = async () => {
       if (!user?.uid || !dateRange.from || !dateRange.to) return;
-user.uid = "z5FsL6dgqNf97BOp5oN9EnspfIw2"
       // user.uid = "PMY061vYmogZ2bKKB72TQUwQMa33"  // testing with vishal sir's acc
       try {
         setLoadingData(true);
@@ -93,7 +91,7 @@ user.uid = "z5FsL6dgqNf97BOp5oN9EnspfIw2"
         const sessions = await FirebaseService.getAttendanceSessions({
           teacherId: user.uid,
           dateRange: { start: dateRange.from, end: dateRange.to }
-        });
+        }, 300);
 
         setAllSessions(sessions);
         setLastFetched(new Date());
@@ -144,17 +142,17 @@ user.uid = "z5FsL6dgqNf97BOp5oN9EnspfIw2"
         for (const sectionData of Array.from(sectionDataCache.values())) {
           const sectionSessions = allSessions.filter(s => s.section === sectionData.section);
           const students = await FirebaseService.getStudents(sectionData.section);
-          
+
           for (const student of students) {
             let presentCount = 0;
             const totalSessions = sectionSessions.length;
-            
+
             for (const session of sectionSessions) {
               if (session.presentStudents?.includes(student.usn)) {
                 presentCount++;
               }
             }
-            
+
             const attendanceRate = totalSessions > 0 ? (presentCount / totalSessions) * 100 : 0;
             allStudents.push({
               student: { ...student, section: sectionData.section },
@@ -165,13 +163,13 @@ user.uid = "z5FsL6dgqNf97BOp5oN9EnspfIw2"
             });
           }
         }
-        
+
         // Sort by attendance rate ascending
         allStudents.sort((a, b) => a.attendanceRate - b.attendanceRate);
         setDisplayedStudents(allStudents.slice(0, STUDENTS_PER_PAGE));
         setHasMoreStudents(allStudents.length > STUDENTS_PER_PAGE);
         setStudentPage(1);
-        
+
         // Store all for infinite scroll
         if (typeof window !== 'undefined') {
           (window as any).__allStudents = allStudents;
@@ -181,22 +179,22 @@ user.uid = "z5FsL6dgqNf97BOp5oN9EnspfIw2"
         const sectionData = sectionDataCache.get(activeTab);
         if (sectionData) {
           const students = [...sectionData.studentsNeedingAttention];
-          
+
           // Also load students with good attendance
           const sectionSessions = allSessions.filter(s => s.section === activeTab);
           const allSectionStudents = await FirebaseService.getStudents(activeTab);
-          
+
           for (const student of allSectionStudents) {
             if (!students.find(s => s.student.usn === student.usn)) {
               let presentCount = 0;
               const totalSessions = sectionSessions.length;
-              
+
               for (const session of sectionSessions) {
                 if (session.presentStudents?.includes(student.usn)) {
                   presentCount++;
                 }
               }
-              
+
               const attendanceRate = totalSessions > 0 ? (presentCount / totalSessions) * 100 : 0;
               students.push({
                 student,
@@ -207,12 +205,12 @@ user.uid = "z5FsL6dgqNf97BOp5oN9EnspfIw2"
               });
             }
           }
-          
-          students.sort((a, b) => b.attendanceRate - a.attendanceRate);
+
+          students.sort((a, b) => a.attendanceRate - b.attendanceRate);
           setDisplayedStudents(students.slice(0, STUDENTS_PER_PAGE));
           setHasMoreStudents(students.length > STUDENTS_PER_PAGE);
           setStudentPage(1);
-          
+
           if (typeof window !== 'undefined') {
             (window as any).__allStudents = students;
           }
@@ -254,7 +252,7 @@ user.uid = "z5FsL6dgqNf97BOp5oN9EnspfIw2"
       const nextPage = studentPage + 1;
       const startIdx = 0;
       const endIdx = nextPage * STUDENTS_PER_PAGE;
-      
+
       setDisplayedStudents(allStudents.slice(startIdx, endIdx));
       setHasMoreStudents(endIdx < allStudents.length);
       setStudentPage(nextPage);
@@ -268,15 +266,11 @@ user.uid = "z5FsL6dgqNf97BOp5oN9EnspfIw2"
       await FirebaseService.getAttendanceSessions({
         teacherId: user.uid,
         dateRange: { start: dateRange.from!, end: dateRange.to! }
-      }, 100);
-      window.location.reload();
+      }, 300);
+      addToast({ title: "Refreshed", description: "You are viewing the latest data!", variant: "default" })
     } catch (error) {
       console.error('Error refreshing:', error);
-      addToast({
-        title: "Error",
-        description: "Failed to refresh data",
-        variant: "destructive"
-      });
+      addToast({ title: "Error", description: "Failed to refresh data", variant: "destructive" });
     } finally {
       setLoadingData(false);
     }
@@ -333,8 +327,8 @@ user.uid = "z5FsL6dgqNf97BOp5oN9EnspfIw2"
   };
 
   // Derived data for charts
-  const filteredSessions = activeTab === 'all' 
-    ? allSessions 
+  const filteredSessions = activeTab === 'all'
+    ? allSessions
     : allSessions.filter(s => s.section === activeTab);
 
   const weeklyData = dateRange.from && dateRange.to && filteredSessions.length > 0
@@ -405,14 +399,14 @@ user.uid = "z5FsL6dgqNf97BOp5oN9EnspfIw2"
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
           <div>
             <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-cyber-gray-900 to-cyber-gray-700 bg-clip-text text-transparent mb-2">
-              My Attendance Reports
+              Attendance Analytics
             </h1>
             <p className="text-cyber-gray-600">
               Analytics and insights for your teaching sessions
             </p>
           </div>
 
-          {lastFetched && (
+          {/* {lastFetched && (
             <div className="flex items-center gap-3">
               <div className="text-right text-sm">
                 <p className="text-cyber-gray-600">Last updated</p>
@@ -431,7 +425,7 @@ user.uid = "z5FsL6dgqNf97BOp5oN9EnspfIw2"
                 Refresh
               </Button>
             </div>
-          )}
+          )} */}
         </div>
 
         {/* Filters */}
@@ -521,18 +515,15 @@ user.uid = "z5FsL6dgqNf97BOp5oN9EnspfIw2"
 
               <Card variant="cyber" className="p-4 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    overallStats.avgAttendance >= 75 ? 'bg-green-100' : 'bg-orange-100'
-                  }`}>
-                    <Percent className={`w-5 h-5 ${
-                      overallStats.avgAttendance >= 75 ? 'text-green-600' : 'text-orange-600'
-                    }`} />
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${overallStats.avgAttendance >= 75 ? 'bg-green-100' : 'bg-orange-100'
+                    }`}>
+                    <Percent className={`w-5 h-5 ${overallStats.avgAttendance >= 75 ? 'text-green-600' : 'text-orange-600'
+                      }`} />
                   </div>
                   <div>
                     <p className="text-sm text-cyber-gray-600">Avg Attendance</p>
-                    <p className={`text-2xl font-bold ${
-                      overallStats.avgAttendance >= 75 ? 'text-green-600' : 'text-orange-600'
-                    }`}>
+                    <p className={`text-2xl font-bold ${overallStats.avgAttendance >= 75 ? 'text-green-600' : 'text-orange-600'
+                      }`}>
                       {overallStats.avgAttendance.toFixed(1)}%
                     </p>
                   </div>
@@ -554,20 +545,28 @@ user.uid = "z5FsL6dgqNf97BOp5oN9EnspfIw2"
 
             {/* Section Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
-              <TabsList className="w-full justify-start overflow-x-auto bg-white border border-cyber-gray-200 p-1 rounded-lg mb-6">
-                <TabsTrigger 
-                  value="all" 
-                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyber-yellow data-[state=active]:to-cyber-yellow-dark data-[state=active]:text-cyber-gray-900 transition-all duration-300"
+              <TabsList className="sticky top-0 z-10 h-max w-full justify-start overflow-x-auto bg-gradient-to-r from-cyber-yellow/40 via-white to-cyber-yellow/40 border-2 border-cyber-yellow-dark shadow-lg p-2 rounded-xl mb-8 flex gap-2">
+                <TabsTrigger
+                  value="all"
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyber-yellow data-[state=active]:to-cyber-yellow-dark data-[state=active]:text-cyber-gray-900 data-[state=active]:shadow-lg data-[state=active]:scale-105 font-bold px-6 py-2 rounded-lg transition-all duration-300 border-2 border-transparent data-[state=active]:border-cyber-yellow-dark"
                 >
-                  All Sections
+                  <span className="flex items-center gap-2">
+                    <Users className="w-5 h-5" />
+                    <span className="block sm:hidden">All</span>
+                    <span className="hidden sm:block">All Sections</span>
+                  </span>
                 </TabsTrigger>
                 {sections.map(section => (
-                  <TabsTrigger 
-                    key={section} 
+                  <TabsTrigger
+                    key={section}
                     value={section}
-                    className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyber-yellow data-[state=active]:to-cyber-yellow-dark data-[state=active]:text-cyber-gray-900 transition-all duration-300"
+                    className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyber-yellow data-[state=active]:to-cyber-yellow-dark data-[state=active]:text-cyber-gray-900 data-[state=active]:shadow-lg data-[state=active]:scale-105 font-bold px-6 py-2 rounded-lg transition-all duration-300 border-2 border-transparent data-[state=active]:border-cyber-yellow-dark"
                   >
-                    {section}
+                    <span className="flex items-center gap-2">
+                      <BarChart3 className="w-5 h-5" />
+                      <span className="block sm:hidden">{section}</span>
+                      <span className="hidden sm:block">{getProgramName(section)}</span>
+                    </span>
                   </TabsTrigger>
                 ))}
               </TabsList>
@@ -598,8 +597,8 @@ user.uid = "z5FsL6dgqNf97BOp5oN9EnspfIw2"
                     <>
                       <SectionComparisonChart data={sectionComparisonData} />
                       {dateRange.from && dateRange.to && (
-                        <AttendanceHeatmap 
-                          sessions={filteredSessions} 
+                        <AttendanceHeatmap
+                          sessions={filteredSessions}
                           dateRange={{ from: dateRange.from, to: dateRange.to }}
                         />
                       )}
@@ -609,7 +608,7 @@ user.uid = "z5FsL6dgqNf97BOp5oN9EnspfIw2"
 
                 {(topPerformers.length > 0 || bottomPerformers.length > 0) && (
                   <div className="mb-6">
-                    <TopBottomPerformers 
+                    <TopBottomPerformers
                       topPerformers={topPerformers}
                       bottomPerformers={bottomPerformers}
                     />
@@ -627,103 +626,103 @@ user.uid = "z5FsL6dgqNf97BOp5oN9EnspfIw2"
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                     {dateRange.from && dateRange.to && (
-                      <AttendanceHeatmap 
-                        sessions={filteredSessions} 
+                      <AttendanceHeatmap
+                        sessions={filteredSessions}
                         dateRange={{ from: dateRange.from, to: dateRange.to }}
                       />
                     )}
                   </div>
                 </TabsContent>
               ))}
+
+              {/* Students List with Infinite Scroll */}
+              <TabsContent key={activeTab} value={activeTab} className="mt-0 animate-in fade-in-50 duration-300">
+                <Card variant="cyber" className="p-6 mb-6">
+                  <h2 className="text-xl font-bold text-cyber-gray-900 mb-4">
+                    All Students - Sorted by Attendance
+                  </h2>
+
+                  <div className="space-y-3 max-h-[800px] overflow-y-auto">
+                    {displayedStudents.map((studentAttendance) => (
+                      <Link
+                        key={studentAttendance.student.usn}
+                        href={`/students/${studentAttendance.student.id}`}
+                        className="block bg-white rounded-lg p-4 shadow-sm border border-cyber-gray-200 hover:border-cyber-yellow hover:shadow-md transition-all"
+                      >
+                        <div className="flex items-center justify-between gap-4 mb-3">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <div className="w-10 h-10 bg-gradient-to-br from-cyber-gray-100 to-cyber-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
+                              <User className="w-5 h-5 text-cyber-gray-600" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-semibold text-cyber-gray-900 truncate">
+                                {studentAttendance.student.name}
+                              </h4>
+                              <p className="text-sm text-cyber-gray-600">
+                                {studentAttendance.student.usn} • {studentAttendance.student.section}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-4 flex-shrink-0">
+                            <div className="text-right">
+                              <div className="text-sm text-cyber-gray-600">
+                                {studentAttendance.presentCount}/{studentAttendance.totalSessions}
+                              </div>
+                              <div className="text-xs text-cyber-gray-500">
+                                present
+                              </div>
+                            </div>
+
+                            <div className={`px-3 py-1 rounded-full text-sm font-semibold ${studentAttendance.attendanceRate >= 90
+                              ? 'bg-green-100 text-green-700'
+                              : studentAttendance.attendanceRate >= 75
+                                ? 'bg-blue-100 text-blue-700'
+                                : studentAttendance.attendanceRate >= 50
+                                  ? 'bg-yellow-100 text-yellow-700'
+                                  : studentAttendance.attendanceRate >= 30
+                                    ? 'bg-orange-100 text-orange-700'
+                                    : 'bg-red-100 text-red-700'
+                              }`}>
+                              {studentAttendance.attendanceRate.toFixed(1)}%
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="w-full bg-cyber-gray-200 rounded-full h-2 overflow-hidden">
+                          <div
+                            className={`h-full transition-all ${studentAttendance.attendanceRate >= 90
+                              ? 'bg-gradient-to-r from-green-500 to-green-600'
+                              : studentAttendance.attendanceRate >= 75
+                                ? 'bg-gradient-to-r from-blue-500 to-blue-600'
+                                : studentAttendance.attendanceRate >= 50
+                                  ? 'bg-gradient-to-r from-yellow-500 to-yellow-600'
+                                  : studentAttendance.attendanceRate >= 30
+                                    ? 'bg-gradient-to-r from-orange-500 to-orange-600'
+                                    : 'bg-gradient-to-r from-red-500 to-red-600'
+                              }`}
+                            style={{ width: `${studentAttendance.attendanceRate}%` }}
+                          />
+                        </div>
+                      </Link>
+                    ))}
+
+                    {/* Infinite scroll trigger */}
+                    {hasMoreStudents && (
+                      <div ref={observerTarget} className="flex justify-center p-4">
+                        <Loader2 className="w-6 h-6 animate-spin text-cyber-yellow" />
+                      </div>
+                    )}
+
+                    {!hasMoreStudents && displayedStudents.length > 0 && (
+                      <div className="text-center p-4 text-cyber-gray-600 text-sm">
+                        Showing all {displayedStudents.length} students
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              </TabsContent>
             </Tabs>
-
-            {/* Students List with Infinite Scroll */}
-            <Card variant="cyber" className="p-6 mb-6">
-              <h2 className="text-xl font-bold text-cyber-gray-900 mb-4">
-                All Students - Sorted by Attendance
-              </h2>
-              
-              <div className="space-y-3 max-h-[800px] overflow-y-auto">
-                {displayedStudents.map((studentAttendance) => (
-                  <Link
-                    key={studentAttendance.student.usn}
-                    href={`/students/${studentAttendance.student.id}`}
-                    className="block bg-white rounded-lg p-4 shadow-sm border border-cyber-gray-200 hover:border-cyber-yellow hover:shadow-md transition-all"
-                  >
-                    <div className="flex items-center justify-between gap-4 mb-3">
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="w-10 h-10 bg-gradient-to-br from-cyber-gray-100 to-cyber-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
-                          <User className="w-5 h-5 text-cyber-gray-600" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-cyber-gray-900 truncate">
-                            {studentAttendance.student.name}
-                          </h4>
-                          <p className="text-sm text-cyber-gray-600">
-                            {studentAttendance.student.usn} • {studentAttendance.student.section}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-4 flex-shrink-0">
-                        <div className="text-right">
-                          <div className="text-sm text-cyber-gray-600">
-                            {studentAttendance.presentCount}/{studentAttendance.totalSessions}
-                          </div>
-                          <div className="text-xs text-cyber-gray-500">
-                            present
-                          </div>
-                        </div>
-                        
-                        <div className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                          studentAttendance.attendanceRate >= 90
-                            ? 'bg-green-100 text-green-700'
-                            : studentAttendance.attendanceRate >= 75
-                            ? 'bg-blue-100 text-blue-700'
-                            : studentAttendance.attendanceRate >= 50
-                            ? 'bg-yellow-100 text-yellow-700'
-                            : studentAttendance.attendanceRate >= 30
-                            ? 'bg-orange-100 text-orange-700'
-                            : 'bg-red-100 text-red-700'
-                        }`}>
-                          {studentAttendance.attendanceRate.toFixed(1)}%
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="w-full bg-cyber-gray-200 rounded-full h-2 overflow-hidden">
-                      <div
-                        className={`h-full transition-all ${
-                          studentAttendance.attendanceRate >= 90
-                            ? 'bg-gradient-to-r from-green-500 to-green-600'
-                            : studentAttendance.attendanceRate >= 75
-                            ? 'bg-gradient-to-r from-blue-500 to-blue-600'
-                            : studentAttendance.attendanceRate >= 50
-                            ? 'bg-gradient-to-r from-yellow-500 to-yellow-600'
-                            : studentAttendance.attendanceRate >= 30
-                            ? 'bg-gradient-to-r from-orange-500 to-orange-600'
-                            : 'bg-gradient-to-r from-red-500 to-red-600'
-                        }`}
-                        style={{ width: `${studentAttendance.attendanceRate}%` }}
-                      />
-                    </div>
-                  </Link>
-                ))}
-
-                {/* Infinite scroll trigger */}
-                {hasMoreStudents && (
-                  <div ref={observerTarget} className="flex justify-center p-4">
-                    <Loader2 className="w-6 h-6 animate-spin text-cyber-yellow" />
-                  </div>
-                )}
-
-                {!hasMoreStudents && displayedStudents.length > 0 && (
-                  <div className="text-center p-4 text-cyber-gray-600 text-sm">
-                    Showing all {displayedStudents.length} students
-                  </div>
-                )}
-              </div>
-            </Card>
           </>
         )}
 
