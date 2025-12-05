@@ -2,30 +2,26 @@
 // Cron job to send absence notifications via SMS
 // Runs daily at 11 AM UTC (4:30 PM IST) via Vercel Cron
 
-import { NextRequest, NextResponse } from 'next/server';
 import { AttendanceSession, Student } from '@/lib/types';
-import { initializeApp, getApps } from 'firebase/app';
-import { getFirestore, collection, query, where, getDocs, doc, setDoc, Timestamp } from 'firebase/firestore';
+import * as admin from 'firebase-admin';
+import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // Max 60 seconds for Vercel Hobby
 
-// Initialize Firebase (singleton pattern)
-function getFirebaseApp() {
-  if (getApps().length === 0) {
-    const firebaseConfig = {
-      apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-      authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-      messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-      appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-    };
-    
-    return initializeApp(firebaseConfig);
+// Initialize Firebase Admin (singleton pattern)
+function getFirebaseAdmin() {
+  if (!admin.apps.length) {
+    const serviceAccount = JSON.parse(
+      process.env.FIREBASE_SERVICE_ACCOUNT_KEY || '{}'
+    );
+
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
   }
-  return getApps()[0];
+  return admin;
 }
 
 interface AbsenceNotification {
@@ -35,7 +31,7 @@ interface AbsenceNotification {
   missedSessions: string[];
   totalSessions: number;
   guid?: string;
-  status: string; 
+  status: string;
   sentAt?: Date;
 }
 
@@ -53,12 +49,12 @@ interface SmsResult {
 }
 
 /**
- * Send SMS notifications via SMS API in batches of 100
+ * Send SMS notifications via SMS API in batches of 1000
  */
 async function sendAbsenceNotifications(recipients: SmsRecipient[]): Promise<SmsResult[]> {
-  const SMS_DLT_CONFIG = JSON.parse(process.env.SMS_DLT_CONFIG || '{}') as { 
-    API_URL: string; 
-    API_KEY: string; 
+  const SMS_DLT_CONFIG = JSON.parse(process.env.SMS_DLT_CONFIG || '{}') as {
+    API_URL: string;
+    API_KEY: string;
     TEMPLATE_TEXT: string;
     TEMPLATE_ID: number;
   };
@@ -100,7 +96,7 @@ async function sendAbsenceNotifications(recipients: SmsRecipient[]): Promise<Sms
       if (!smsResponse.ok) {
         const errorText = await smsResponse.text();
         console.error(`[CRON] Batch ${i + 1} failed: ${errorText}`);
-        
+
         // Add failed results for this batch
         batch.forEach(r => {
           allResults.push({
@@ -114,7 +110,7 @@ async function sendAbsenceNotifications(recipients: SmsRecipient[]): Promise<Sms
 
       const smsResult = await smsResponse.json();
       allResults.push(...(smsResult.results || []));
-      
+
       console.log(`[CRON] Batch ${i + 1} completed: ${smsResult.summary?.successful || 0} sent, ${smsResult.summary?.failed || 0} failed`);
 
       // Small delay between batches to avoid rate limiting
@@ -123,7 +119,7 @@ async function sendAbsenceNotifications(recipients: SmsRecipient[]): Promise<Sms
       }
     } catch (error) {
       console.error(`[CRON] Batch ${i + 1} error:`, error);
-      
+
       // Add failed results for this batch
       batch.forEach(r => {
         allResults.push({
@@ -138,7 +134,7 @@ async function sendAbsenceNotifications(recipients: SmsRecipient[]): Promise<Sms
   // Notify me and vishal sir with summary (hacky method)
   const successCount = allResults.filter(r => r.success).length;
   const failedCount = allResults.length - successCount;
-  
+
   try {
     await fetch(`${SMS_DLT_CONFIG.API_URL}/api/sms/send`, {
       method: 'POST',
@@ -158,22 +154,23 @@ async function sendAbsenceNotifications(recipients: SmsRecipient[]): Promise<Sms
   } catch (error) {
     console.error('[CRON] Failed to send admin notification:', error);
   }
-  
+
   return allResults;
 }
+
 /**
  * Process absences for a specific date
  * Returns notifications data to be stored in Firestore
  */
 async function processAbsencesForDate(date: string): Promise<AbsenceNotification[]> {
-  const db = getFirestore(getFirebaseApp());
-  
+  const db = getFirebaseAdmin().firestore();
+
   console.log(`[CRON] Processing absences for ${date}`);
 
   // Get all sessions for the specified date
-  const sessionsRef = collection(db, 'attendance_sessions');
-  const sessionsQuery = query(sessionsRef, where('date', '==', date));
-  const sessionsSnapshot = await getDocs(sessionsQuery);
+  const sessionsSnapshot = await db.collection('attendance_sessions')
+    .where('date', '==', date)
+    .get();
 
   if (sessionsSnapshot.empty) {
     console.log(`[CRON] No sessions found for ${date}`);
@@ -202,9 +199,9 @@ async function processAbsencesForDate(date: string): Promise<AbsenceNotification
     console.log(`[CRON] Processing section ${section} with ${sectionSessions.length} sessions`);
 
     // Get all students in this section
-    const studentsRef = collection(db, 'students');
-    const studentsQuery = query(studentsRef, where('section', '==', section));
-    const studentsSnapshot = await getDocs(studentsQuery);
+    const studentsSnapshot = await db.collection('students')
+      .where('section', '==', section)
+      .get();
 
     const students = studentsSnapshot.docs.map(doc => ({
       id: doc.id,
@@ -216,7 +213,7 @@ async function processAbsencesForDate(date: string): Promise<AbsenceNotification
 
     for (const session of sectionSessions) {
       const presentStudents = session.presentStudents || [];
-      
+
       // Find absent students
       for (const student of students) {
         const usn = student.usn;
@@ -232,8 +229,8 @@ async function processAbsencesForDate(date: string): Promise<AbsenceNotification
     // Create notifications for students with significant absences
     for (const [usn, missedSessions] of Object.entries(absentSessions)) {
       // Apply leeway: only send if absent for 2+ classes (unless only 1-2 sessions held)
-      const shouldNotify = missedSessions.length >= 2 || 
-                          (sectionSessions.length <= 2 && missedSessions.length > 0);
+      const shouldNotify = missedSessions.length >= 2 ||
+        (sectionSessions.length <= 2 && missedSessions.length > 0);
 
       if (!shouldNotify) {
         // console.log(`[CRON] Skipping ${usn} - only ${missedSessions.length} absences with ${sectionSessions.length} sessions`);
@@ -274,7 +271,7 @@ async function storeNotifications(
   date: string,
   notifications: AbsenceNotification[]
 ): Promise<void> {
-  const db = getFirestore(getFirebaseApp());
+  const db = getFirebaseAdmin().firestore();
 
   // Clean notifications to remove undefined values
   const cleanNotifications = notifications.map(n => ({
@@ -285,20 +282,18 @@ async function storeNotifications(
     totalSessions: n.totalSessions,
     guid: n.guid || null,
     status: n.status,
-    sentAt: n.sentAt ? Timestamp.fromDate(n.sentAt) : null
+    sentAt: n.sentAt ? admin.firestore.Timestamp.fromDate(n.sentAt) : null
   }));
 
   // Store as a single document per date
-  const docRef = doc(db, 'attendance_notifications', date);
-  
-  await setDoc(docRef, {
+  await db.collection('attendance_notifications').doc(date).set({
     date,
     totalNotifications: notifications.length,
     successCount: notifications.filter(n => n.status === 'sent').length,
     failedCount: notifications.filter(n => n.status !== 'sent').length,
     notifications: cleanNotifications,
-    createdAt: Timestamp.now(),
-    updatedAt: Timestamp.now()
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp()
   });
 
   console.log(`[CRON] Stored notification data for ${date}`);
@@ -313,7 +308,7 @@ export async function GET(request: NextRequest) {
     // Verify cron secret for security
     const authHeader = request.headers.get('authorization');
     const cronSecret = process.env.CRON_SECRET;
-    
+
     if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
       console.error('[CRON] Unauthorized access attempt');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -322,21 +317,24 @@ export async function GET(request: NextRequest) {
     // Get target date from query param or use today
     const searchParams = request.nextUrl.searchParams;
     const targetDateParam = searchParams.get('date');
-    const targetDate = targetDateParam || (() => {
-      return (new Date()).toISOString().split('T')[0]; // YYYY-MM-DD
-    })();
+    const targetDate = targetDateParam || new Date().toISOString().split('T')[0];
 
     console.log(`[CRON] Target date: ${targetDate}`);
 
     // Check if notifications for this date already exist
-    const db = getFirestore(getFirebaseApp());
-    const docSnap = await getDocs(query(collection(db, 'attendance_notifications'), where('date', '==', targetDate)));
-    if (!docSnap.empty) {
+    const db = getFirebaseAdmin().firestore();
+    const existingDoc = await db.collection('attendance_notifications').doc(targetDate).get();
+
+    if (existingDoc.exists) {
       console.log(`[CRON] Notifications for ${targetDate} already exist.`);
       if (searchParams.get('force') === 'true') {
         console.log('[CRON] Force flag detected, proceeding to re-send notifications.');
       } else {
-        return NextResponse.json({ success: true, message: 'Job already run for this date', date: targetDate });
+        return NextResponse.json({
+          success: true,
+          message: 'Job already run for this date',
+          date: targetDate
+        });
       }
     }
 
@@ -396,7 +394,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('[CRON] Job failed:', error);
-    
+
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : String(error)

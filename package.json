@@ -36,6 +36,7 @@
     "dotenv": "^17.2.3",
     "file-saver": "^2.0.5",
     "firebase": "^12.2.1",
+    "firebase-admin": "^13.6.0",
     "lucide-react": "^0.542.0",
     "next": "15.5.2",
     "postcss": "^8.5.6",
