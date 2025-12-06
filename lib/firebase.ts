@@ -23,7 +23,7 @@ export const db = getFirestore(app);
 // Configure Google Auth Provider
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({
-  // hd: 'jainuniversity.ac.in', // Restrict to university domain
+  hd: 'jainuniversity.ac.in', // Restrict to university domain
 });
 
 export default app;

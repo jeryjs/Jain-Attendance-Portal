@@ -33,14 +33,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 				// If no custom claim for role, set one based on email
 				if (!customClaims?.role) {
 					const ADMIN_EMAILS = process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(',').map(email => email.toLowerCase().trim()) || [];
-					// Guest teacher emails (without @jainuniversity.ac.in)
-					const GUEST_TEACHER_EMAILS = [
-						'ishrutihiregoudar@gmail.com',
-						'premamarrahe@gmail.com',
-						'sancharinimitra1992@gmail.com',
-						'blavanya562@gmail.com',
-						'lakshmi.d20@gmail.com',
-					];
 
 					let role: 'student' | 'teacher' | 'admin' = 'student';
 					const email = firebaseUser.email || '';
@@ -48,18 +40,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 					
 					if (ADMIN_EMAILS.includes(emailLower)) {
 						role = 'admin';
-					} else if (GUEST_TEACHER_EMAILS.includes(emailLower)) {
-						// Allow guest teachers with non-university emails
-						role = 'teacher';
 					} else if (/^[a-zA-Z]+\.?[a-zA-Z]+@jainuniversity\.ac\.in$/.test(email)) {
 						role = 'teacher';
 					} else if (/^\d{2}[a-zA-Z]{5}\d{3}@jainuniversity\.ac\.in$/.test(email)) {
 						role = 'student';
 					}
-
-					// Set the custom claim via backend API (not possible directly from client)
-					// You should call your backend endpoint to set the claim here
-					// await fetch('/api/setCustomClaim', { method: 'POST', body: JSON.stringify({ uid: firebaseUser.uid, role }) });
 
 					// For now, just use the detected role locally
 					customClaims = { ...customClaims, role };
