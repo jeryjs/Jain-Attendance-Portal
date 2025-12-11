@@ -21,9 +21,9 @@ interface StudentData {
 
 interface AttendanceRecord extends AttendanceSession {
   isPresent: boolean;
-} 
+}
 
-export default function StudentDetailPage({ params }: { params: { usn: string } }) {
+export default function StudentDetailPage({ params }: { params: Promise<{ usn: string }> }) {
   const { user, loading, isTeacher, isAdmin } = useAuth();
   const { addToast } = useToast();
   const router = useRouter();
@@ -60,17 +60,18 @@ export default function StudentDetailPage({ params }: { params: { usn: string } 
         let studentData: StudentData | null = null;
         const records: AttendanceRecord[] = [];
 
+        const usn = await params.then(p => p.usn);
         // Fetch students based on view mode
         if (isAdminView && isAdmin) {
           // Admin: fetch ALL students once
           const allStudents = await FirebaseService.getAdminStudents();
-          studentData = allStudents.find(s => s.usn === params.usn) || null;
+          studentData = allStudents.find(s => s.usn === usn) || null;
         } else {
           // Non-admin: fetch per section until found
           const allSections = Array.from(new Set(sessions.map(s => s.section)));
           for (const section of allSections) {
             const students = await FirebaseService.getStudents(section);
-            const found = students.find(s => s.usn === params.usn);
+            const found = students.find(s => s.usn === usn);
             if (found) {
               studentData = found;
               break;
@@ -84,7 +85,7 @@ export default function StudentDetailPage({ params }: { params: { usn: string } 
             if (session.section === studentData.section) {
               records.push({
                 ...session,
-                isPresent: session.presentStudents?.includes(params.usn) || false,
+                isPresent: session.presentStudents?.includes(usn) || false,
               });
             }
           }
@@ -101,7 +102,7 @@ export default function StudentDetailPage({ params }: { params: { usn: string } 
         }
 
         setStudent(studentData);
-        
+
         // Sort records by date (newest first)
         records.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         setAttendanceRecords(records);
@@ -131,7 +132,7 @@ export default function StudentDetailPage({ params }: { params: { usn: string } 
     };
 
     loadStudentData();
-  }, [user?.uid, params.usn, addToast, router, isAdminView, isAdmin]);
+  }, [user?.uid, params, addToast, router, isAdminView, isAdmin]);
 
   if (loading || loadingData) {
     return (
@@ -212,9 +213,8 @@ export default function StudentDetailPage({ params }: { params: { usn: string } 
 
           <Card variant="cyber" className="p-4">
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                stats.rate >= 75 ? 'bg-green-100' : stats.rate >= 50 ? 'bg-yellow-100' : 'bg-red-100'
-              }`}>
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${stats.rate >= 75 ? 'bg-green-100' : stats.rate >= 50 ? 'bg-yellow-100' : 'bg-red-100'
+                }`}>
                 {stats.rate >= 75 ? (
                   <TrendingUp className="w-5 h-5 text-green-600" />
                 ) : stats.rate >= 50 ? (
@@ -225,9 +225,8 @@ export default function StudentDetailPage({ params }: { params: { usn: string } 
               </div>
               <div>
                 <p className="text-sm text-cyber-gray-600">Attendance</p>
-                <p className={`text-2xl font-bold ${
-                  stats.rate >= 75 ? 'text-green-600' : stats.rate >= 50 ? 'text-yellow-600' : 'text-red-600'
-                }`}>
+                <p className={`text-2xl font-bold ${stats.rate >= 75 ? 'text-green-600' : stats.rate >= 50 ? 'text-yellow-600' : 'text-red-600'
+                  }`}>
                   {stats.rate.toFixed(1)}%
                 </p>
               </div>
@@ -255,7 +254,7 @@ export default function StudentDetailPage({ params }: { params: { usn: string } 
         {/* Attendance Records */}
         <Card variant="cyber" className="p-6">
           <h2 className="text-lg font-semibold text-cyber-gray-900 mb-4">Attendance History</h2>
-          
+
           {attendanceRecords.length === 0 ? (
             <p className="text-center text-cyber-gray-600 py-8">No attendance records found</p>
           ) : (
@@ -264,17 +263,15 @@ export default function StudentDetailPage({ params }: { params: { usn: string } 
                 <Link
                   key={`${record.date}-${record.session}`}
                   href={record.id ? `/attendance/${record.section}?date=${record.date}&time=${record.session}` : '#'}
-                  className={`block p-4 rounded-lg border transition-all cursor-pointer ${
-                    record.isPresent
+                  className={`block p-4 rounded-lg border transition-all cursor-pointer ${record.isPresent
                       ? 'bg-green-50 border-green-200 hover:border-green-300 hover:shadow-md'
                       : 'bg-red-50 border-red-200 hover:border-red-300 hover:shadow-md'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                        record.isPresent ? 'bg-green-100' : 'bg-red-100'
-                      }`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${record.isPresent ? 'bg-green-100' : 'bg-red-100'
+                        }`}>
                         {record.isPresent ? (
                           <CheckCircle className="w-4 h-4 text-green-600" />
                         ) : (
@@ -290,11 +287,10 @@ export default function StudentDetailPage({ params }: { params: { usn: string } 
                         </p>
                       </div>
                     </div>
-                    <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      record.isPresent
+                    <div className={`px-3 py-1 rounded-full text-sm font-medium ${record.isPresent
                         ? 'bg-green-100 text-green-700'
                         : 'bg-red-100 text-red-700'
-                    }`}>
+                      }`}>
                       {record.isPresent ? 'Present' : 'Absent'}
                     </div>
                   </div>
