@@ -6,11 +6,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { FirebaseService } from '@/lib/firebase-service';
 import { AttendanceSession } from '@/lib/types';
-import { ArrowLeft, Calendar, CheckCircle, XCircle, User, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { ArrowLeft, Calendar, CheckCircle, XCircle, User, TrendingUp, TrendingDown, Minus, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { format } from 'date-fns';
+import { idbGetItem } from '@/lib/idb-util';
 
 interface StudentData {
   usn: string;
@@ -33,6 +34,8 @@ export default function StudentDetailPage({ params }: { params: Promise<{ usn: s
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [stats, setStats] = useState({ total: 0, present: 0, absent: 0, rate: 0 });
+  const [refetching, setRefetching] = useState(false);
+  const [lastFetched, setLastFetched] = useState<Date | null>(null);
 
   useEffect(() => {
     const loadStudentData = async () => {
@@ -119,6 +122,13 @@ export default function StudentDetailPage({ params }: { params: Promise<{ usn: s
           rate
         });
 
+        // Set last fetched timestamp for admin view
+        if (isAdminView && isAdmin) {
+          await idbGetItem('adminAttendanceSessionsCache').then(data =>
+            setLastFetched(data ? new Date(JSON.parse(data).timestamp) : new Date())
+          ).catch(() => setLastFetched(new Date()));
+        }
+
       } catch (error) {
         console.error('Error loading student data:', error);
         addToast({
@@ -133,6 +143,34 @@ export default function StudentDetailPage({ params }: { params: Promise<{ usn: s
 
     loadStudentData();
   }, [user?.uid, params, addToast, router, isAdminView, isAdmin]);
+
+  // Force refetch data - Only available in admin view
+  const handleRefetch = async () => {
+    if (!isAdminView || !isAdmin || !user?.uid) return;
+
+    try {
+      setRefetching(true);
+
+      // Force refetch both students and sessions
+      await Promise.all([
+        FirebaseService.getAdminStudents(true),
+        FirebaseService.getAdminAttendanceSessions(true)
+      ]);
+
+      // Reload the page to refresh all data
+      window.location.reload();
+
+    } catch (error) {
+      console.error('Error refetching data:', error);
+      addToast({
+        title: "Refetch Failed",
+        description: "Failed to refresh data from database",
+        variant: "destructive"
+      });
+    } finally {
+      setRefetching(false);
+    }
+  };
 
   if (loading || loadingData) {
     return (
@@ -152,13 +190,39 @@ export default function StudentDetailPage({ params }: { params: Promise<{ usn: s
   return (
     <div className="min-h-screen p-2 md:p-6">
       <div className="max-w-5xl mx-auto">
-        {/* Back Button */}
-        <Link href={isAdminView ? "/students/admin" : "/reports"}>
-          <Button variant="outline" className="mb-4">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            {isAdminView ? 'Back to Student Management' : 'Back to Reports'}
-          </Button>
-        </Link>
+        <div className="flex items-center justify-between mb-6">
+          {/* Back Button */}
+          <Link href={isAdminView ? "/students/admin" : "/reports"}>
+            <Button variant="outline" className="mb-4">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              {isAdminView ? 'Back to Student Management' : 'Back to Reports'}
+            </Button>
+          </Link>
+
+          {/* Admin Refresh Section - Only show in admin view */}
+          {isAdminView && isAdmin && (
+            <div className="flex items-center gap-3">
+              {lastFetched && (
+                <div className="text-right text-sm">
+                  <p className="text-purple-600">Last updated</p>
+                  <p className="font-medium text-purple-800">
+                    {format(lastFetched, 'MMM dd, HH:mm')}
+                  </p>
+                </div>
+              )}
+              <Button
+                onClick={handleRefetch}
+                disabled={refetching}
+                variant="outline"
+                size="sm"
+                className="border-purple-300 text-purple-700 hover:bg-purple-50"
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${refetching ? 'animate-spin' : ''}`} />
+                {refetching ? 'Refreshing...' : 'Refresh'}
+              </Button>
+            </div>
+          )}
+        </div>
 
         {/* Student Header */}
         <Card variant="cyber" className="p-6 mb-6">
