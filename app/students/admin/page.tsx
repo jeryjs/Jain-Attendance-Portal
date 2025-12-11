@@ -336,12 +336,12 @@ export default function AdminStudentsPage() {
             setShowForm(true);
           }}
         />,
-        <GridActionsCellItem
-          key="delete"
-          icon={<Trash2 size={16} />}
-          label="Delete"
-          onClick={() => handleDeleteStudent(params.row.id)}
-        />,
+        // <GridActionsCellItem
+        //   key="delete"
+        //   icon={<Trash2 size={16} />}
+        //   label="Delete"
+        //   onClick={() => handleDeleteStudent(params.row.id)}
+        // />,
       ],
     },
   ], [handleDeleteStudent]);
@@ -451,7 +451,7 @@ export default function AdminStudentsPage() {
                 <Plus className="w-4 h-4 mr-2" />
                 Add Student
               </Button>
-              {selectedStudents.length > 0 && (
+              {/* {selectedStudents.length > 0 && (
                 <Button
                   onClick={handleBulkDelete}
                   className="bg-red-600 hover:bg-red-700 text-white"
@@ -459,7 +459,7 @@ export default function AdminStudentsPage() {
                   <Trash2 className="w-4 h-4 mr-2" />
                   Delete Selected ({selectedStudents.length})
                 </Button>
-              )}
+              )} */}
             </div>
             <Button
               onClick={handleExportToCSV}
