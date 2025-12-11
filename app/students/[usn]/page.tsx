@@ -262,6 +262,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ usn: s
               {attendanceRecords.map((record, idx) => (
                 <Link
                   key={`${record.date}-${record.session}`}
+                  prefetch={false}
                   href={record.id ? `/attendance/${record.section}?date=${record.date}&time=${record.session}` : '#'}
                   className={`block p-4 rounded-lg border transition-all cursor-pointer ${record.isPresent
                       ? 'bg-green-50 border-green-200 hover:border-green-300 hover:shadow-md'
