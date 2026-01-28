@@ -22,6 +22,7 @@ import AttendanceView from './AttendanceView';
 import ConfigureSessionDialog from './ConfigureSessionDialog';
 import PreviousSessions from './PreviousSessions';
 import FeedbackCard from '@/components/FeedbackCard';
+import SunsetPage from '@/app/sunset/page';
 
 export default function SectionAttendancePage() {
   // Router & context
@@ -70,6 +71,8 @@ export default function SectionAttendancePage() {
   const isValidSession = urlDate && urlTime && SESSION_OPTIONS.some(opt => opt.key === urlTime) && isValidDate(urlDate);
   const sessionKey = `${section}_${urlDate}_${urlTime}`;
   const isViewOnly = !(isValidSession && (!existingSession || isEditMode));
+    
+  return SunsetPage()
 
   useEffect(() => {
     if (!loading && (!user || !isTeacher)) {

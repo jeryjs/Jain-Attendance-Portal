@@ -23,6 +23,7 @@ import {
 import { FirebaseService } from '@/lib/firebase-service';
 import { format, subDays, startOfWeek, endOfWeek } from 'date-fns';
 import FeedbackCard from '@/components/FeedbackCard';
+import SunsetPage from '../sunset/page';
 
 interface DashboardStats {
   totalSessions: number;
@@ -53,6 +54,8 @@ export default function DashboardPage() {
       router.push('/');
     }
   }, [user, loading, isTeacher, router]);
+  
+  return SunsetPage()
 
   useEffect(() => {
     if (user) {
@@ -111,7 +114,7 @@ export default function DashboardPage() {
             </span>
             <br />
             <span className="bg-gradient-to-r from-cyber-yellow to-cyber-yellow-dark bg-clip-text text-transparent">
-              {user.displayName?.split(' ')[0] || 'Teacher'}!
+              {user?.displayName?.split(' ')[0] || 'Teacher'}!
             </span>
           </h1>
 

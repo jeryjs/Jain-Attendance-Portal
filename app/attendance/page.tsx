@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import SunsetPage from '../sunset/page';
 
 export default function AttendancePage() {
   const { user, loading, isTeacher, isAdmin, recentSections } = useAuth();
@@ -31,6 +32,8 @@ export default function AttendancePage() {
   const [isDesktop, setIsDesktop] = useState(
     typeof window !== "undefined" ? window.innerWidth >= 768 : false
   );
+    
+  return SunsetPage()
 
   useEffect(() => {
     const handleResize = () => {

@@ -82,7 +82,7 @@ export default function SunsetPage() {
 					</h1>
 
 					<p className="text-sm md:text-xl text-cyber-gray-600 max-w-2xl mx-auto leading-relaxed">
-						This system has gracefully completed its journey. For reports, records, or any official requests, please contact <span className="font-semibold text-cyber-gray-900">Vishal sir</span>.
+						This system has gracefully completed its journey. For reports, records, or any official requests, please contact <span className="font-semibold text-cyber-gray-900">Dr. Vishal Patil</span>.
 					</p>
 
 					<div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
