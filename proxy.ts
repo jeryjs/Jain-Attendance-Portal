@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const ADMIN_BYPASS_COOKIE = 'admin_bypass';
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
 	const { pathname } = request.nextUrl;
 
 	if (pathname.startsWith('/sunset')) return NextResponse.next();

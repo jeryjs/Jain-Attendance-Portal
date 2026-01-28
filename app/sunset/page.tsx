@@ -22,28 +22,31 @@ const clearBypassCookie = () => {
 };
 
 export default function SunsetPage() {
-	const { loading, isAdmin } = useAuth();
+	const { loading, isAdmin, signIn, user } = useAuth();
 	const router = useRouter();
 	const [adminSeen, setAdminSeen] = useState(false);
+	// Get current path (for client components, use window.location.pathname)
+	const [pathname, setPathname] = useState<string | null>(null);
+	useEffect(() => {
+		if (typeof window !== 'undefined') {
+			setPathname(window.location.pathname);
+		}
+	}, []);
 
 	useEffect(() => {
 		if (loading) return;
 		if (!isAdmin) {
 			clearBypassCookie();
+			setAdminSeen(false);
 			return;
 		}
 
 		const seen = localStorage.getItem(ADMIN_SEEN_KEY) === 'true';
 		if (!seen) {
 			localStorage.setItem(ADMIN_SEEN_KEY, 'true');
-			setAdminSeen(false);
-			return;
 		}
-
-		setAdminSeen(true);
-		setBypassCookie();
-		router.replace('/dashboard');
-	}, [loading, isAdmin, router]);
+		setAdminSeen(seen);
+	}, [loading, isAdmin]);
 
 	return (
 		<div className="relative min-h-screen overflow-hidden">
@@ -109,19 +112,45 @@ export default function SunsetPage() {
 						</Card>
 					</div>
 
-					{isAdmin && adminSeen && (
-						<div className="mt-6 flex justify-center">
-							<Button
-								onClick={() => {
-									setBypassCookie();
-									router.push('/dashboard');
-								}}
-								className="bg-cyber-yellow hover:bg-cyber-yellow-dark text-cyber-gray-900"
-							>
-								Continue to Admin Portal
-							</Button>
-						</div>
-					)}
+					<div className="mt-8 flex justify-center">
+						<Card variant="glass" className="w-full max-w-xl p-4 md:p-6 text-left">
+							<div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+								<div>
+									<h3 className="text-base md:text-lg font-semibold text-cyber-gray-900">Admin access</h3>
+									<p className="text-xs md:text-sm text-cyber-gray-600">
+										Only admins can continue to archived dashboards. {user ? 'Signed in users are verified automatically.' : 'Please sign in to verify admin access.'}
+									</p>
+								</div>
+								{pathname === '/sunset' && (
+									isAdmin ? (
+										<Button
+											onClick={() => {
+												setBypassCookie();
+												router.push('/dashboard');
+											}}
+											className="bg-cyber-yellow hover:bg-cyber-yellow-dark text-cyber-gray-900"
+										>
+											Continue to Admin Portal
+										</Button>
+									) : (
+										<Button
+											onClick={signIn}
+											variant="outline"
+											className="border-cyber-yellow text-cyber-gray-900"
+											disabled={loading}
+										>
+											Sign in as Admin
+										</Button>
+									)
+								)}
+							</div>
+							{isAdmin && !adminSeen && (
+								<p className="mt-3 text-xs text-cyber-gray-500">
+									First-time admin notice shown. You can continue when ready.
+								</p>
+							)}
+						</Card>
+					</div>
 
 					<div className="mt-10 md:mt-14 flex justify-center">
 						<div className="w-full max-w-xl opacity-90">
