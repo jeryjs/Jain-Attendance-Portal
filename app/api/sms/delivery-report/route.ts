@@ -122,6 +122,8 @@ async function updateNotificationStatus(
  */
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
+
+  return NextResponse.json({ message: '[SMS-API] This API is now sunset' });
   
   const deliveryReport = {
     to: searchParams.get('p'),
@@ -147,10 +149,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const statusText = STATUS_CODES[deliveryReport.status] || 'unknown';
+    const statusText = STATUS_CODES[deliveryReport.status!!] || 'unknown';
 
     await updateNotificationStatus(
-      deliveryReport.to,
+      deliveryReport.to!!,
       deliveryReport.messageId || '',
       statusText,
       deliveryReport.reasonCode || undefined
@@ -165,7 +167,7 @@ export async function GET(request: NextRequest) {
     console.error('[SMS-DLR] Error processing delivery report:', error);
     return NextResponse.json({ 
       message: 'Error processing report',
-      error: error instanceof Error ? error.message : String(error)
+      // error: error instanceof Error ? error.message : String(error)
     }, { status: 500 });
   }
 }
