@@ -6,6 +6,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Navigation from "@/components/Navigation";
+import RouteGuard from "@/components/RouteGuard";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,6 +34,7 @@ export default function RootLayout({
         <ErrorBoundary>
           <AuthProvider>
             <ToastProvider>
+              <RouteGuard />
                 <div className="flex min-h-screen flex-col lg:flex-row">
                 <Navigation />
                 <main className="flex-1 overflow-auto h-screen">

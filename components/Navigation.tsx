@@ -48,6 +48,7 @@ export default function Navigation() {
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
+  if (pathname.startsWith('/sunset')) return null;
   if (!user || !isTeacher) return null;
 
   return (
